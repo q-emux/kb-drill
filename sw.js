@@ -1,4 +1,4 @@
-const CACHE = 'kb-drill-2026-09-07-1066';
+const CACHE = 'kb-drill-20260909-0921.8b2e396';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -10,8 +10,11 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if(e.request.method !== 'GET') return;
+  const isDoc = e.request.mode === 'navigate' ||
+                (e.request.destination === '' && e.request.url.indexOf('.html') >= 0);
+  const req = isDoc ? new Request(e.request.url, {cache: 'reload'}) : e.request;
   e.respondWith(
-    fetch(e.request).then(r => {
+    fetch(req).then(r => {
       const copy = r.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
       return r;
