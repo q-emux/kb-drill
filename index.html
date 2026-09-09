@@ -89,6 +89,8 @@
                 background:var(--card); font-size:.8rem; font-weight:700; cursor:pointer}
   .verdict{margin-bottom:12px; padding:9px 12px; border-radius:8px; font-size:.85rem; line-height:1.45}
   .verdict b{font-weight:800}
+  .askbtn{display:block; margin-top:8px; border:1px solid currentColor; background:transparent;
+          color:inherit; border-radius:999px; padding:5px 11px; font-size:.7rem; cursor:pointer}
   .verdict.hit{background:#E8F3EC; color:#1F5B38}
   .verdict.near{background:#FBF2DF; color:#7A5410}
   .verdict.miss{background:#FBEAE8; color:#8E1F16}
@@ -143,11 +145,14 @@
     <div class="chips" id="chips"></div>
     <h3>Modo risposta</h3>
     <div class="chips" id="wmode"></div>
+    <div class="legend" style="margin-top:8px">Il controllo confronta solo con il target e le alternative note: non sa giudicare una formulazione nuova. Se pensi che la tua regga, segnala per Claude.</div>
     <h3>Carte nuove al giorno</h3>
     <div class="chips" id="npd"></div>
     <h3>Progressi</h3>
     <div class="prog" id="prog"></div>
     <div class="legend" id="legend"></div>
+    <h3>Da chiarire con Claude</h3>
+    <div id="reviewBox"></div>
     <h3>Memoria</h3>
     <div class="row">
       <button class="iconbtn" id="btnExport">Esporta progressi</button>
@@ -240,9 +245,14 @@ function judge(c, ans){
     const d = lev(a, n);
     if(d <= Math.max(1, Math.floor(Math.min(a.length, n.length) * 0.2))) best = 'near';
   }
-  return best === 'near'
-    ? {cls:'near', label:'Ci sei quasi \u2014 controlla la forma esatta:', text:ans}
-    : {cls:'miss', label:'Diversa dal target (potrebbe comunque valere \u2014 decidi tu):', text:ans};
+  if(best === 'near') return {cls:'near', label:'Ci sei quasi \u2014 controlla la forma esatta:', text:ans};
+  // quante parole piene condivide con il target? distingue "altra formulazione" da "fuori strada"
+  let shared = 0;
+  const tw = new Set(nrm(targets(c).join(' ')).split(' ').filter(w => w.length > 2));
+  for(const w of aw) if(w.length > 2 && tw.has(w)) shared++;
+  return shared
+    ? {cls:'miss', label:'Non \u00e8 tra le risposte previste:', text:ans}
+    : {cls:'miss', label:'Nessuna corrispondenza con il target:', text:ans};
 }
 
 function today(){
@@ -380,7 +390,9 @@ function render(){
     '</div>' +
     '<div class="answer">' +
       (verdict ? '<div class="verdict ' + verdict.cls + '"><b>' + verdict.label + '</b> ' +
-                 esc(verdict.text) + '</div>' : '') +
+                 esc(verdict.text) +
+                 (verdict.cls === 'hit' ? '' :
+                   '<button class="askbtn" id="ask">Segna per Claude</button>') + '</div>' : '') +
       (current.c === 'Anti-calco' ? '<div class="fixline">\u274c <s>' + esc(current.f) + '</s></div>'
         : (current.c === 'Confusables' ? '<div class="fixline">' + esc(current.f) + '</div>' : '')) +
       '<div class="term ' + (current.c === 'Confusables' ? 'small' : '') + '">' +
@@ -401,11 +413,42 @@ function render(){
   const inp = document.getElementById('ans'), chk = document.getElementById('chk');
   if(chk) chk.onclick = () => submitAnswer();
   if(inp) inp.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); submitAnswer(); } };
+  const ab = document.getElementById('ask'); if(ab) ab.onclick = () => markForReview();
   const ok = document.getElementById('ok'); if(ok) ok.onclick = () => grade(true);
   const ko = document.getElementById('ko'); if(ko) ko.onclick = () => grade(false);
 }
 
 function doFlip(){ if(current){ flipped = true; render(); } }
+
+function markForReview(){
+  if(!current || !verdict) return;
+  store.review = store.review || [];
+  store.review.push({d: today(), cat: current.c, scene: current.sc || '',
+                     prompt: current.f, target: current.b, mine: verdict.text});
+  save(); renderChrome();
+  toast('Segnata. La trovi in Impostazioni \u2192 Da chiarire con Claude.');
+}
+function reviewText(){
+  const rows = (store.review || []).map((r, i) =>
+    (i+1) + '. [' + r.cat + '] ' + (r.scene ? 'Scena: ' + r.scene + ' | ' : '') +
+    'Prompt: ' + r.prompt + ' | Target: ' + r.target + ' | La mia risposta: ' + r.mine);
+  return 'Risposte da chiarire (KB Drill):\n' + rows.join('\n');
+}
+function copyReview(){
+  const t = reviewText();
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(() => toast('Elenco copiato: incollalo in chat.'),
+                                          () => fallbackCopy(t));
+  } else fallbackCopy(t);
+}
+function fallbackCopy(t){
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast('Elenco copiato: incollalo in chat.'); }
+  catch(e){ toast('Copia non riuscita: usa Esporta progressi.'); }
+  ta.remove();
+}
 
 function submitAnswer(){
   const inp = document.getElementById('ans');
@@ -476,6 +519,16 @@ function renderChrome(){
   document.querySelectorAll('.chip[data-n]').forEach(el => el.onclick = () => {
     store.cfg.newPerDay = parseInt(el.dataset.n, 10); save(); buildSession();
   });
+
+  const rv = store.review || [];
+  document.getElementById('reviewBox').innerHTML = rv.length
+    ? '<div class="row"><button class="iconbtn" id="btnCopyRev">Copia elenco (' + rv.length + ')</button>' +
+      '<button class="iconbtn" id="btnClearRev">Svuota</button></div>' +
+      '<div class="legend" style="margin-top:8px">Incolla l\'elenco in chat: le tue alternative vengono valutate una per una.</div>'
+    : '<div class="legend">Nessuna risposta segnata. Quando una tua alternativa non viene riconosciuta, usa \u00abSegna per Claude\u00bb sulla carta.</div>';
+  const bc = document.getElementById('btnCopyRev'); if(bc) bc.onclick = copyReview;
+  const bx = document.getElementById('btnClearRev');
+  if(bx) bx.onclick = () => { store.review = []; save(); renderChrome(); toast('Elenco svuotato.'); };
 
   let nuove=0, appr=0, cons=0, solide=0;
   for(const x of pool()){
