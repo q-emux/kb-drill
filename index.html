@@ -94,6 +94,7 @@
   .mine span{display:block; font-family:inherit; font-size:.62rem; letter-spacing:.12em;
              text-transform:uppercase; opacity:.65; margin-bottom:2px;
              font-family:system-ui,-apple-system,sans-serif}
+  .askbtn.plain{border-color:var(--line); color:var(--slate)}
   .askbtn{display:block; margin-top:8px; border:1px solid currentColor; background:transparent;
           color:inherit; border-radius:999px; padding:5px 11px; font-size:.7rem; cursor:pointer}
   .verdict.hit{background:#E8F3EC; color:#1F5B38}
@@ -131,7 +132,7 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-09-10 · build 20260910-0933.0ea82c2 · 407 carte LEAN / 1074 FULL · fonte: KNOWLEDGE-BASE.md</div>
+    <div class="meta">2026-09-10 · build 20260910-1224.0ea82c2 · 407 carte LEAN / 1074 FULL · fonte: KNOWLEDGE-BASE.md</div>
   </header>
 
   <div class="bar">
@@ -256,9 +257,22 @@ const STEM = {got:'get',gotten:'get',went:'go',gone:'go',came:'come',took:'take'
   lit:'light',quit:'quit',beat:'beat',bit:'bite',ate:'eat',broke:'break',broken:'break',
   spoke:'speak',spoken:'speak',drew:'draw',flew:'fly',cut:'cut',hit:'hit',let:'let'};
 function stem(w){ return STEM[w] || w.replace(/(?:ing|ed|es|s)$/, ''); }
+function baseForm(w){
+  const m = w.match(/^(.*?)(?:ing|ed|es|s)$/);
+  if(!m) return w;
+  let s = m[1];
+  if(/([bcdfghjklmnpqrstvwxz])\1$/.test(s)) s = s.slice(0, -1);   // upped -> upp -> up
+  return s;
+}
+function sameStem(a, b){
+  // differenza di sola desinenza, anche su parole corte: ups/up, upped/up, sticks/stick
+  const sa = baseForm(a), sb = baseForm(b);
+  return sa.length >= 2 && sa === sb;
+}
 function wordEq(a, b){
   if(a === b) return true;
   if(STEM[a] === b || STEM[b] === a || (STEM[a] && STEM[a] === STEM[b])) return true;
+  if(sameStem(a, b)) return true;
   const L = Math.min(a.length, b.length);
   if(L >= 4 && stem(a) === stem(b) && stem(a).length >= 3) return true;
   if(L < 4) return false;                 // parole corte: nessuna tolleranza
@@ -298,7 +312,8 @@ function judge(c, ans){
     if(!ok && ((nw.length >= 2 && r >= 0.7) || (nw.length === 1 && nw[0].length >= 5 && r === 1))) ok = true;
     if(ok){
       if(!flip) return {cls:'hit',
-                        label: exact ? 'Corrisponde' : 'Corrisponde (refuso ignorato)',
+                        label: exact ? 'Corrisponde'
+                                     : 'Corrisponde \u2014 controlla la forma (tempo, soggetto, refusi)',
                         text: ans};
       best = 'near';
     }
@@ -451,8 +466,7 @@ function render(){
     '<div class="answer">' +
       (verdict ? '<div class="verdict ' + verdict.cls + '"><b>' + verdict.label + '</b>' +
                  '<div class="mine"><span>la tua risposta</span>' + esc(verdict.text) + '</div>' +
-                 (verdict.cls === 'hit' ? '' :
-                   '<button class="askbtn" id="ask">Segna per Claude</button>') + '</div>' : '') +
+                 '<button class="askbtn" id="ask">Segna per Claude</button></div>' : '') +
       (current.c === 'Anti-calco' ? '<div class="fixline">\u274c <s>' + esc(current.f) + '</s></div>'
         : (current.c === 'Confusables' ? '<div class="fixline">' + esc(current.f) + '</div>' : '')) +
       '<div class="term ' + (current.c === 'Confusables' ? 'small' : '') + '">' +
@@ -460,6 +474,7 @@ function render(){
       (current.e ? '<div class="ex">' + esc(current.e) + '</div>' : '') +
       (current.y ? '<div class="syn">' + esc(current.y) + '</div>' : '') +
       (current.n ? '<div class="note">' + esc(current.n) + '</div>' : '') +
+      (verdict ? '' : '<button class="askbtn plain" id="ask2">Segna per Claude</button>') +
     '</div>' +
     '<div class="actions">' +
       (flipped ? '<button class="btn ok" id="ok">\u2713 Lo sapevo</button><button class="btn ko" id="ko">\u21bb Da rivedere</button>'
@@ -474,6 +489,7 @@ function render(){
   if(chk) chk.onclick = () => submitAnswer();
   if(inp) inp.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); submitAnswer(); } };
   const ab = document.getElementById('ask'); if(ab) ab.onclick = () => markForReview();
+  const ab2 = document.getElementById('ask2'); if(ab2) ab2.onclick = () => markForReview();
   const ok = document.getElementById('ok'); if(ok) ok.onclick = () => grade(true);
   const ko = document.getElementById('ko'); if(ko) ko.onclick = () => grade(false);
 }
@@ -481,17 +497,20 @@ function render(){
 function doFlip(){ if(current){ flipped = true; render(); } }
 
 function markForReview(){
-  if(!current || !verdict) return;
+  if(!current) return;
   store.review = store.review || [];
   store.review.push({d: today(), cat: current.c, scene: current.sc || '',
-                     prompt: current.f, target: current.b, mine: verdict.text});
+                     prompt: current.f, target: current.b,
+                     mine: verdict ? verdict.text : '(nessuna risposta scritta)',
+                     esito: verdict ? verdict.label : ''});
   save(); renderChrome();
   toast('Segnata. La trovi in Impostazioni \u2192 Da chiarire con Claude.');
 }
 function reviewText(){
   const rows = (store.review || []).map((r, i) =>
     (i+1) + '. [' + r.cat + '] ' + (r.scene ? 'Scena: ' + r.scene + ' | ' : '') +
-    'Prompt: ' + r.prompt + ' | Target: ' + r.target + ' | La mia risposta: ' + r.mine);
+    'Prompt: ' + r.prompt + ' | Target: ' + r.target + ' | La mia risposta: ' + r.mine +
+    (r.esito ? ' | Esito tool: ' + r.esito : ''));
   return 'Risposte da chiarire (KB Drill):\n' + rows.join('\n');
 }
 function copyReview(){
@@ -674,7 +693,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20260910-0933.0ea82c2';
+const BUILD = '20260910-1224.0ea82c2';
 if(location.protocol === 'https:' && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg => {
     if(store.cfg.lastBuild && store.cfg.lastBuild !== BUILD)
