@@ -1,4 +1,4 @@
-const CACHE = 'kb-drill-20260910-1302.c0231c9';
+const CACHE = 'kb-drill-20260911-0540.ac89b30';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
