@@ -138,7 +138,7 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-09-15 · build 20260915-1244.fbf866e · 407 carte LEAN / 1077 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
+    <div class="meta">2026-09-15 · build 20260915-1251.fbf866e · 407 carte LEAN / 1077 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
   </header>
 
   <div class="bar">
@@ -285,8 +285,12 @@ function sameStem(a, b){
   return sa.length >= 2 && sa === sb;
 }
 // 1 = identica, 2 = stessa parola con flessione diversa, 3 = refuso, 0 = diversa
+const POSSW = /^(?:my|your|his|her|its|our|their|one.s|someone.s|somebody.s)$/;
+const SELFW = /^(?:myself|yourself|himself|herself|itself|ourselves|yourselves|themselves|oneself)$/;
 function wordKind(a, b){
   if(a === b) return 1;
+  if(POSSW.test(a) && POSSW.test(b)) return 1;   // il possessivo segue il soggetto: your -> her
+  if(SELFW.test(a) && SELFW.test(b)) return 1;
   if(STEM[a] === b || STEM[b] === a || (STEM[a] && STEM[a] === STEM[b])) return 2;
   if(sameStem(a, b)) return 2;
   const L = Math.min(a.length, b.length);
@@ -431,6 +435,67 @@ function matchQuality(target, ans){
   }
   return {typos: typos, infl: infl, structural: structural};
 }
+function modelSentence(c){
+  // la frase completa della KB che corrisponde al cloze mostrato
+  const segs = String(c.e || '').split(' / ').map(s => s.trim()).filter(Boolean);
+  if(!segs.length) return '';
+  if(segs.length === 1) return segs[0];
+  const ctx = nrmLight(String(c.f || '').replace('______', ' ')).split(' ').filter(Boolean);
+  let best = segs[0], bestScore = -1;
+  for(const s of segs){
+    const sw = nrmLight(s).split(' ').filter(Boolean);
+    let n = 0;
+    for(const w of ctx) if(sw.indexOf(w) >= 0) n++;
+    if(n > bestScore){ bestScore = n; best = s; }
+  }
+  return best;
+}
+function sentenceOf(c, ans){
+  const f = String(c.f || '');
+  if(f.indexOf('______') < 0) return '';
+  return f.replace('______', ans);
+}
+function alignCheck(target, ans){
+  // allinea le parole dell'espressione dentro la frase, in ordine.
+  // Conta solo cio' che sta DENTRO l'espressione: intrusi in mezzo e forme sbagliate.
+  const AUX = /^(?:am|is|are|was|were|be|been|being|m|s|re|ll|ve|d|has|have|had|will|would|can|could|do|does|did)$/;
+  let tw = nrmLight(target).split(' ').filter(Boolean);
+  const aw = nrmLight(ans).split(' ').filter(Boolean);
+  if(tw.length && tw[0] === 'to') tw = tw.slice(1);        // 'to cut corners' -> 'cut corners'
+  if(!tw.length || !aw.length) return null;
+  const pos = [], kind = [];
+  let i = 0;
+  for(const t of tw){
+    let found = -1;
+    for(let k = i; k < aw.length; k++) if(wordEq(aw[k], t)){ found = k; break; }
+    if(found < 0){ pos.push(-1); kind.push(0); continue; }
+    pos.push(found); kind.push(wordKind(aw[found], t)); i = found + 1;
+  }
+  const hit = pos.filter(p => p >= 0);
+  if(hit.length < Math.max(1, Math.ceil(tw.length * 0.6))) return null;
+  const from = hit[0], to = hit[hit.length - 1];
+  const intruders = [];
+  for(let k = from; k <= to; k++){
+    if(pos.indexOf(k) >= 0) continue;
+    const w = aw[k].replace(/^'+/, '');
+    if(AUX.test(w) || AUX.test(aw[k].split("'").pop())) continue;   // ausiliari: ammessi
+    intruders.push(aw[k]);
+  }
+  let infl = 0, structural = 0;
+  for(let k = 0; k < tw.length; k++){
+    if(pos[k] < 0 || kind[k] === 1) continue;
+    if(kind[k] === 3) continue;                       // refuso
+    infl++;
+    const a = aw[pos[k]], tIng = /ing$/.test(tw[k]), aIng = /ing$/.test(a);
+    if(tIng !== aIng){
+      const prevRaw = pos[k] > 0 ? aw[pos[k] - 1] : '';
+      const ok = aIng && (AUX.test(prevRaw.replace(/^'+/, '')) || AUX.test(prevRaw.split("'").pop()));
+      if(!ok) structural++;
+    }
+  }
+  const missing = tw.filter((t, k) => pos[k] < 0);
+  return {intruders: intruders, infl: infl, structural: structural, missing: missing};
+}
 function shapeNote(c, ans){
   // cosa chiede la frase appena prima del buco: passivo, base, gerundio
   const f = String(c.f || '');
@@ -470,12 +535,22 @@ function judge(c, ans){
   }
   const v = judgeOne(c, ans);
   if(!(v.cls === 'hit' && v.label === 'Corrisponde')) v.note = diffNote(bestTarget(c, ans), ans);
-  if(v.cls === 'hit' && v.label !== 'Corrisponde'){
-    const q = matchQuality(bestTarget(c, ans), ans);
-    if(q.structural > 0 || q.infl >= 2){
-      v.cls = 'near';
-      v.label = 'Espressione giusta, forma sbagliata';
-      if(!v.note) v.note = diffNote(bestTarget(c, ans), ans);
+  if(v.cls === 'hit' && v.label.indexOf('alternativa') < 0){
+    const al = alignCheck(bestTarget(c, ans), ans);
+    if(al && (al.structural > 0 || al.infl >= 2 || al.intruders.length || al.missing.length)){
+      const bits = [];
+      if(al.missing.length) bits.push('manca \u00ab' + al.missing.join(' ') + '\u00bb');
+      if(al.intruders.length) bits.push('di troppo \u00ab' + al.intruders.join(' ') + '\u00bb');
+      if(al.structural || al.infl >= 2){
+        const d = diffNote(bestTarget(c, ans), ans);
+        const m = d && d.match(/forma: [^\u00b7]+/);
+        if(m) bits.push(m[0]);
+      }
+      if(bits.length){
+        v.cls = 'near';
+        v.label = 'Espressione giusta, forma da sistemare';
+        v.note = bits.join(' \u00b7 ');
+      }
     }
   }
   const fe = formError(bestTarget(c, ans), ans);
@@ -913,7 +988,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20260915-1244.fbf866e';
+const BUILD = '20260915-1251.fbf866e';
 if(location.protocol === 'https:' && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg => {
     if(store.cfg.lastBuild && store.cfg.lastBuild !== BUILD)
