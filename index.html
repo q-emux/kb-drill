@@ -138,7 +138,7 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-09-13 · build 20260913-1336.5202d6d · 407 carte LEAN / 1075 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
+    <div class="meta">2026-09-15 · build 20260915-1142.5202d6d · 407 carte LEAN / 1075 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
   </header>
 
   <div class="bar">
@@ -758,7 +758,8 @@ function renderChrome(){
 /* ---------- export / import / reset ---------- */
 function exportProgress(){
   const payload = {v:2, exported:new Date().toISOString(), day:store.day,
-                   newToday:store.newToday, cfg:store.cfg, cards:store.cards};
+                   newToday:store.newToday, cfg:store.cfg, cards:store.cards,
+                   review:(store.review || [])};
   const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -781,8 +782,18 @@ function importProgress(file){
     }
     if(inc.day === today() && typeof inc.newToday === 'number')
       store.newToday = Math.max(store.newToday, inc.newToday);
+    let addRev = 0;
+    if(Array.isArray(inc.review) && inc.review.length){
+      store.review = store.review || [];
+      const key = r => [r.d, r.target, r.mine].join('\u0001');
+      const seen = {};
+      for(const r of store.review) seen[key(r)] = 1;
+      for(const r of inc.review) if(!seen[key(r)]){ store.review.push(r); seen[key(r)] = 1; addRev++; }
+      store.review.sort((a, b) => String(a.d).localeCompare(String(b.d)));
+    }
     save(); buildSession();
-    toast('Importate: ' + add + ' nuove, ' + upd + ' aggiornate.');
+    toast('Importate: ' + add + ' nuove, ' + upd + ' aggiornate' +
+          (addRev ? ', ' + addRev + ' segnalazioni' : '') + '.');
   };
   r.readAsText(file);
 }
@@ -823,7 +834,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20260913-1336.5202d6d';
+const BUILD = '20260915-1142.5202d6d';
 if(location.protocol === 'https:' && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg => {
     if(store.cfg.lastBuild && store.cfg.lastBuild !== BUILD)
