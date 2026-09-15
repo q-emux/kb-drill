@@ -138,7 +138,7 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-09-15 · build 20260915-1154.fbf866e · 407 carte LEAN / 1077 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
+    <div class="meta">2026-09-15 · build 20260915-1223.fbf866e · 407 carte LEAN / 1077 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
   </header>
 
   <div class="bar">
@@ -276,6 +276,7 @@ function baseForm(w){
   if(!m) return w;
   let s = m[1];
   if(/([bcdfghjklmnpqrstvwxz])\1$/.test(s)) s = s.slice(0, -1);   // upped -> upp -> up
+  if(/[bcdfghjklmnpqrstvwxz]i$/.test(s)) s = s.slice(0, -1) + 'y';  // carried -> carri -> carry
   return s;
 }
 function sameStem(a, b){
@@ -293,13 +294,19 @@ function wordEq(a, b){
   if(transposed(a, b)) return true;
   return lev(a, b) <= (L >= 6 ? 2 : 1);   // refusi di battitura ammessi
 }
+function counts_(need){
+  // su espressioni brevi contano TUTTE le parole (la particella di un phrasal e' decisiva:
+  // 'stop by' != 'stop back'); su quelle lunghe le paroline funzionali non gonfiano il punteggio
+  return need.length <= 3 ? need.slice() : need.filter(w => w.length >= 3);
+}
 function subseqF(need, hay){
-  // rapporto calcolato sulle sole parole piene: 'at', 'of' non gonfiano il punteggio
-  let i = 0, hit = 0, tot = 0;
-  for(const w of need) if(w.length >= 3) tot++;
+  const cw = counts_(need), tot = cw.length;
+  const useful = {};
+  for(const w of cw) useful[w] = (useful[w] || 0) + 1;
+  let i = 0, hit = 0;
   for(const w of hay){
     if(i < need.length && wordEq(w, need[i])){
-      if(need[i].length >= 3) hit++;
+      if(useful[need[i]]){ hit++; useful[need[i]]--; }
       i++;
     }
   }
@@ -315,8 +322,8 @@ function containsF(need, hay){
   return false;
 }
 function overlapF(need, hay){
-  // parole del target presenti nella risposta, senza vincolo di ordine (solo parole piene)
-  const need2 = need.filter(w => w.length >= 3);
+  // parole del target presenti nella risposta, senza vincolo di ordine
+  const need2 = counts_(need);
   if(need2.length < 2) return 0;
   let hit = 0;
   for(const w of need2) if(hay.some(h => wordEq(h, w))) hit++;
@@ -368,6 +375,30 @@ function bestTarget(c, ans){
   }
   return best || c.b;
 }
+function isParticiple(w){
+  return /(?:ed|en)$/.test(w) || ['done','gone','seen','known','taken','given','made','said',
+    'told','kept','held','brought','bought','caught','thought','felt','found','left','lost','met',
+    'paid','put','run','sat','sold','sent','spent','stood','stuck','stolen','thrown','worn','won',
+    'written','meant','dealt','led','rung','sprung','sworn','woken','dug','hung','lit','beaten',
+    'bitten','eaten','broken','spoken','drawn','flown','cut','hit','let','read','set'].indexOf(w) >= 0;
+}
+function formError(target, ans){
+  // 'can't be bother': dopo be/been/being/get il target ha un participio, la risposta la forma base
+  const tw = nrmLight(target).split(' ').filter(Boolean);
+  const aw = nrmLight(ans).split(' ').filter(Boolean);
+  const AUX = /^(?:be|been|being|get|got|was|were|is|are|am|s|re)$/;
+  for(let i = 1; i < aw.length; i++){
+    if(!AUX.test(aw[i - 1].replace(/^'+/, ''))) continue;
+    const a = aw[i];
+    if(isParticiple(a) || /ing$/.test(a)) continue;        // forma gia' valida dopo be
+    for(const t of tw){
+      if(t === a) continue;
+      if(isParticiple(t) && wordEq(t, a))
+        return 'dopo \u00ab' + aw[i - 1] + '\u00bb serve il participio: \u00ab' + t + '\u00bb';
+    }
+  }
+  return '';
+}
 function shapeNote(c, ans){
   // cosa chiede la frase appena prima del buco: passivo, base, gerundio
   const f = String(c.f || '');
@@ -407,6 +438,14 @@ function judge(c, ans){
   }
   const v = judgeOne(c, ans);
   if(!(v.cls === 'hit' && v.label === 'Corrisponde')) v.note = diffNote(bestTarget(c, ans), ans);
+  const fe = formError(bestTarget(c, ans), ans);
+  if(fe && v.cls === 'hit'){
+    v.cls = 'near';
+    v.label = 'Espressione giusta, forma sbagliata';
+    v.note = fe;
+  } else if(fe) {
+    v.note = v.note ? (fe + ' \u00b7 ' + v.note) : fe;
+  }
   const sh = shapeNote(c, ans);
   if(sh) v.note = v.note ? (sh + ' \u00b7 ' + v.note) : sh;
   return v;
@@ -834,7 +873,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20260915-1154.fbf866e';
+const BUILD = '20260915-1223.fbf866e';
 if(location.protocol === 'https:' && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg => {
     if(store.cfg.lastBuild && store.cfg.lastBuild !== BUILD)
