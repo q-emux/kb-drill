@@ -138,7 +138,7 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-09-16 · build 20260916-0924.6655012 · 417 carte LEAN / 1091 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
+    <div class="meta">2026-09-16 · build 20260916-1851.6655012 · 417 carte LEAN / 1091 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
   </header>
 
   <div class="bar">
@@ -274,8 +274,14 @@ const STEM = {is:'be',am:'be',are:'be',was:'be',were:'be',been:'be',being:'be',
   lit:'light',quit:'quit',beat:'beat',bit:'bite',ate:'eat',broke:'break',broken:'break',
   spoke:'speak',spoken:'speak',drew:'draw',flew:'fly',cut:'cut',hit:'hit',let:'let'};
 function stem(w){ return STEM[w] || w.replace(/(?:ing|ed|es|s)$/, ''); }
+// parole che finiscono in -ing senza essere gerundi
+const NOT_ING = /^(?:bring|thing|king|sing|ring|string|wing|spring|swing|cling|fling|sting|during|ceiling|nothing|something|anything|everything|morning|evening|willing|ing)$/;
+function isIng(w){
+  if(!/ing$/.test(w) || NOT_ING.test(w)) return false;
+  return w.length >= 6;                 // radice di almeno tre lettere
+}
 function baseForm(w){
-  const m = w.match(/^(.*?)(?:ing|ed|es|s)$/);
+  const m = /ing$/.test(w) && !isIng(w) ? null : w.match(/^(.*?)(?:ing|ed|es|s)$/);
   if(!m) return w;
   let s = m[1];
   if(/([bcdfghjklmnpqrstvwxz])\1$/.test(s)) s = s.slice(0, -1);   // upped -> upp -> up
@@ -285,7 +291,9 @@ function baseForm(w){
 function sameStem(a, b){
   // differenza di sola desinenza, anche su parole corte: ups/up, upped/up, sticks/stick
   const sa = baseForm(a), sb = baseForm(b);
-  return sa.length >= 2 && sa === sb;
+  if(sa.length < 2 || sb.length < 2) return false;
+  // la -e finale cade davanti a -ed/-ing: figure/figured, use/used, love/loving
+  return sa === sb || sa + 'e' === sb || sa === sb + 'e';
 }
 // 1 = identica, 2 = stessa parola con flessione diversa, 3 = refuso, 0 = diversa
 const POSSW = /^(?:my|your|his|her|its|our|their|one.s|someone.s|somebody.s)$/;
@@ -306,6 +314,9 @@ function wordKind(a, b){
   return lev(a, b) <= (L >= 6 ? 2 : 1) ? 3 : 0;
 }
 function wordEq(a, b){ return wordKind(a, b) > 0; }
+// 'it/them/this/that' nel target sono l'oggetto generico: qualunque cosa li rimpiazzi va bene
+const WILD = /^(?:it|them|this|that)$/;
+function wEq(need, w){ return WILD.test(need) || wordEq(w, need); }
 function counts_(need){
   // su espressioni brevi contano TUTTE le parole (la particella di un phrasal e' decisiva:
   // 'stop by' != 'stop back'); su quelle lunghe le paroline funzionali non gonfiano il punteggio
@@ -317,7 +328,7 @@ function subseqF(need, hay){
   for(const w of cw) useful[w] = (useful[w] || 0) + 1;
   let i = 0, hit = 0;
   for(const w of hay){
-    if(i < need.length && wordEq(w, need[i])){
+    if(i < need.length && wEq(need[i], w)){
       if(useful[need[i]]){ hit++; useful[need[i]]--; }
       i++;
     }
@@ -328,7 +339,7 @@ function containsF(need, hay){
   if(!need.length || need.length > hay.length) return false;
   for(let s = 0; s + need.length <= hay.length; s++){
     let ok = true;
-    for(let k = 0; k < need.length; k++) if(!wordEq(hay[s+k], need[k])){ ok = false; break; }
+    for(let k = 0; k < need.length; k++) if(!wEq(need[k], hay[s+k])){ ok = false; break; }
     if(ok) return true;
   }
   return false;
@@ -338,7 +349,7 @@ function overlapF(need, hay){
   const need2 = counts_(need);
   if(need2.length < 2) return 0;
   let hit = 0;
-  for(const w of need2) if(hay.some(h => wordEq(h, w))) hit++;
+  for(const w of need2) if(WILD.test(w) ? hay.length : hay.some(h => wordEq(h, w))) hit++;
   return hit / need2.length;
 }
 function nrmLight(s){
@@ -367,6 +378,11 @@ function diffNote(target, ans){
     }
     if(k >= 0) used[k] = true;
     else if(!SLOTW.test(w)) missing.push(w);        // i segnaposto non 'mancano'
+  }
+  {
+    const esplicitato = aw.some((w, k) => !used[k] && w.length >= 3);
+    if(esplicitato) for(let i = missing.length - 1; i >= 0; i--)
+      if(/^(?:it|them|this|that)$/.test(missing[i])) missing.splice(i, 1);
   }
   let extra = aw.filter((w, k) => !used[k] && w.length >= 2 &&
                                   !SUBJW.test(w) && !CONJW.test(w.replace(/^'+/, '')));
@@ -426,7 +442,7 @@ function formError(target, ans){
   for(let i = 1; i < aw.length; i++){
     if(!AUX.test(aw[i - 1].replace(/^'+/, ''))) continue;
     const a = aw[i];
-    if(isParticiple(a) || /ing$/.test(a)) continue;        // forma gia' valida dopo be
+    if(isParticiple(a) || isIng(a)) continue;        // forma gia' valida dopo be
     for(const t of tw){
       if(t === a) continue;
       if(isParticiple(t) && wordEq(t, a))
@@ -455,7 +471,7 @@ function matchQuality(target, ans){
     if(kind === 3){ typos++; continue; }
     if(kind !== 2) continue;
     infl++;
-    const a = aw[best], tIng = /ing$/.test(t), aIng = /ing$/.test(a);
+    const a = aw[best], tIng = isIng(t), aIng = isIng(a);
     if(tIng !== aIng){
       // il progressivo dopo un ausiliare resta legittimo: 'I'm feeling' per 'to feel'
       const prevRaw = best > 0 ? aw[best - 1] : '';
@@ -485,7 +501,7 @@ function sentenceOf(c, ans){
   if(f.indexOf('______') < 0) return '';
   return f.replace('______', ans);
 }
-function alignCheck(target, ans){
+function alignCheck(target, ans, expect){
   // una virgola nel target separa due blocchi: fra l'uno e l'altro il materiale e' previsto
   // ('the sooner WE START, the better'), quindi li verifico separatamente
   const segs = String(target).split(',').map(s => s.trim()).filter(Boolean);
@@ -493,7 +509,7 @@ function alignCheck(target, ans){
     const acc = {intruders: [], infl: 0, structural: 0, missing: []};
     let any = false, from0 = 0;
     for(const s of segs){
-      const r = alignOne(s, ans, from0);
+      const r = alignOne(s, ans, from0, expect);
       if(!r) continue;
       any = true;
       if(typeof r.to === 'number') from0 = r.to + 1;   // il blocco seguente parte dopo questo
@@ -503,13 +519,13 @@ function alignCheck(target, ans){
     }
     return any ? acc : null;
   }
-  return alignOne(target, ans);
+  return alignOne(target, ans, 0, expect);
 }
-function alignOne(target, ans, from0){
+function alignOne(target, ans, from0, expect){
   // allinea le parole dell'espressione dentro la frase, in ordine.
   // Conta solo cio' che sta DENTRO l'espressione: intrusi in mezzo e forme sbagliate.
   // soggetti, ausiliari e avverbi non rompono l'espressione: possono starci in mezzo
-  const AUX = /^(?:am|is|are|was|were|be|been|being|m|s|re|ll|ve|d|has|have|had|will|would|can|could|do|does|did|i|you|he|she|it|we|they|there|really|just|always|still|never|also|even|quite|very|all|simply|actually|honestly|only)$/;
+  const AUX = /^(?:am|is|are|was|were|be|been|being|m|s|re|ll|ve|d|has|have|had|will|would|can|could|do|does|did|i|you|he|she|it|we|they|there|really|just|always|still|never|also|even|quite|very|all|simply|actually|honestly|only|me|him|her|us|them)$/;
   let tw = nrmLight(target).split(' ').filter(Boolean);
   const aw = nrmLight(ans).split(' ').filter(Boolean);
   if(tw.length && tw[0] === 'to') tw = tw.slice(1);        // 'to cut corners' -> 'cut corners'
@@ -519,6 +535,11 @@ function alignOne(target, ans, from0){
   for(const t of tw){
     let found = -1;
     for(let k = i; k < aw.length; k++) if(wordEq(aw[k], t)){ found = k; break; }
+    if(found < 0 && WILD.test(t)){
+      // l'oggetto generico e' stato esplicitato: consuma la parola che lo sostituisce
+      for(let k = i; k < aw.length; k++) if(pos.indexOf(k) < 0){ found = k; break; }
+      if(found >= 0){ pos.push(found); kind.push(1); i = found + 1; continue; }
+    }
     if(found < 0){ pos.push(-1); kind.push(0); continue; }
     pos.push(found); kind.push(wordKind(aw[found], t)); i = found + 1;
   }
@@ -526,10 +547,15 @@ function alignOne(target, ans, from0){
   if(hit.length < Math.max(1, Math.ceil(tw.length * 0.6))) return null;
   const from = hit[0], to = hit[hit.length - 1];
   const intruders = [];
+  // ogni segnaposto del target (someone/something) puo' essere riempito da una parola
+  let slots = tw.filter(w => /^(?:something|someone|somebody|sth|sb|one.s|oneself)$/.test(w)).length;
+  let objSlots = tw.filter(w => /^(?:it|them|this|that)$/.test(w)).length;   // budget per il sintagma che esplicita l oggetto
   for(let k = from; k <= to; k++){
     if(pos.indexOf(k) >= 0) continue;
     const w = aw[k].replace(/^'+/, '');
     if(AUX.test(w) || AUX.test(aw[k].split("'").pop())) continue;   // ausiliari: ammessi
+    if(slots > 0){ slots--; continue; }                             // riempie uno slot
+    if(objSlots > 0){ objSlots--; continue; }                       // esplicita 'it/that'
     intruders.push(aw[k]);
   }
   let infl = 0, structural = 0;
@@ -537,15 +563,36 @@ function alignOne(target, ans, from0){
     if(pos[k] < 0 || kind[k] === 1) continue;
     if(kind[k] === 3) continue;                       // refuso
     infl++;
-    const a = aw[pos[k]], tIng = /ing$/.test(tw[k]), aIng = /ing$/.test(a);
+    const a = aw[pos[k]], tIng = isIng(tw[k]), aIng = isIng(a);
     if(tIng !== aIng){
       const prevRaw = pos[k] > 0 ? aw[pos[k] - 1] : '';
-      const ok = aIng && (AUX.test(prevRaw.replace(/^'+/, '')) || AUX.test(prevRaw.split("'").pop()));
-      if(!ok) structural++;
+      // legittimo se e' un progressivo dopo un ausiliare, o se e' la forma che la frase chiede
+      const ok = (aIng && (AUX.test(prevRaw.replace(/^'+/, '')) || AUX.test(prevRaw.split("'").pop())))
+              || (aIng && expect === 'ing')
+              || (!aIng && (expect === 'base' || expect === 'pp'));
+      if(!ok) structural++; else infl--;
     }
   }
-  const missing = tw.filter((t, k) => pos[k] < 0 && !/^(?:something|someone|somebody|sth|sb|one.s|oneself)$/.test(t));
+  let missing = tw.filter((t, k) => pos[k] < 0 && !/^(?:something|someone|somebody|sth|sb|one.s|oneself)$/.test(t));
+  // 'it/them/this/that' nel target sono l'oggetto generico: se la risposta lo esplicita
+  // ('nail it' -> 'nail the presentation') non e' una parola mancante
+  const filled = aw.some((w, k) => pos.indexOf(k) < 0);
+  if(filled) missing = missing.filter(t => !/^(?:it|them|this|that)$/.test(t));
   return {intruders: intruders, infl: infl, structural: structural, missing: missing, to: to};
+}
+// verbi e preposizioni che reggono il gerundio
+const ING_TRIG = /^(?:stop|stops|stopped|keep|keeps|kept|avoid|avoids|avoided|enjoy|enjoys|enjoyed|mind|minds|minded|finish|finishes|finished|start|starts|started|begin|begins|began|consider|considers|suggest|suggests|recommend|recommends|practise|practice|imagine|imagines|risk|risks|admit|admits|deny|denies|miss|misses|quit|quits|worth|like|likes|liked|love|loves|hate|hates|after|before|while|without|by|instead)$/;
+const PP_TRIG = /^(?:was|were|is|are|am|been|being|be|get|got|gets|have|has|had)$/;
+function expectedForm(c){
+  // che forma chiede la frase nel punto del buco: gerundio, base, participio
+  const f = String(c.f || ''), i = f.indexOf('______');
+  if(i < 0) return null;
+  const before = f.slice(0, i).toLowerCase().trim().split(/\s+/);
+  const prev = (before[before.length - 1] || '').replace(/[^a-z']/g, '');
+  if(ING_TRIG.test(prev)) return 'ing';
+  if(prev === 'to') return 'base';
+  if(PP_TRIG.test(prev)) return 'pp';
+  return null;
 }
 function shapeNote(c, ans){
   // cosa chiede la frase appena prima del buco: passivo, base, gerundio
@@ -556,14 +603,13 @@ function shapeNote(c, ans){
   const prev = before[before.length - 1] || '', prev2 = before[before.length - 2] || '';
   const a = String(ans).toLowerCase().trim();
   const firstWord = a.split(/\s+/)[0] || '';
-  if(/^(?:was|were|is|are|am|been|being|be)$/.test(prev) && /ing$/.test(firstWord))
+  if(/^(?:was|were|is|are|am|been|being|be)$/.test(prev) && isIng(firstWord))
     return 'la frase \u00e8 passiva: dopo \u00ab' + prev + '\u00bb serve il participio passato';
-  if(prev === 'to' && /ing$/.test(firstWord))
+  if(prev === 'to' && isIng(firstWord))
     return 'dopo \u00abto\u00bb serve la forma base del verbo';
-  if((/^(?:keep|keeps|kept|avoid|avoids|enjoy|enjoys|mind|minds|worth)$/.test(prev) ||
-      /^(?:keep|keeps|kept|avoid|avoids)$/.test(prev2)) &&
-     !/ing$/.test(firstWord) && firstWord.length > 2)
-    return 'dopo \u00ab' + prev + '\u00bb serve il gerundio (-ing)';
+  if((ING_TRIG.test(prev) || ING_TRIG.test(prev2)) &&
+     !isIng(firstWord) && firstWord.length > 2)
+    return 'dopo \u00ab' + (ING_TRIG.test(prev) ? prev : prev2) + '\u00bb serve il gerundio (-ing)';
   return '';
 }
 function judge(c, ans){
@@ -591,7 +637,7 @@ function judge(c, ans){
   // il controllo si salta solo per i riscontri pieni: un match parziale, anche su
   // un'alternativa, va comunque verificato nella forma
   if(v.cls === 'hit' && ((v.qual || 3) < 2 || v.label.indexOf('alternativa') < 0)){
-    const al = alignCheck(bestTarget(c, ans), ans);
+    const al = alignCheck(bestTarget(c, ans), ans, expectedForm(c));
     if(al && (al.structural > 0 || al.infl >= 2 || al.intruders.length || al.missing.length)){
       const bits = [];
       if(al.missing.length) bits.push('manca \u00ab' + al.missing.join(' ') + '\u00bb');
@@ -618,7 +664,10 @@ function judge(c, ans){
   }
   const sh = shapeNote(c, ans);
   if(sh) v.note = v.note ? (sh + ' \u00b7 ' + v.note) : sh;
-  if(v.cls === 'hit' && !sh) v.note = '';     // se va bene, niente rumore
+  if(v.cls === 'hit' && !sh){
+    v.note = '';                               // se va bene, niente rumore
+    if(v.label.indexOf('controlla la forma') > 0) v.label = 'Corrisponde';
+  }
   return v;
 }
 function judgeOne(c, ans){
@@ -1058,7 +1107,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20260916-0924.6655012';
+const BUILD = '20260916-1851.6655012';
 if(location.protocol === 'https:' && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg => {
     if(store.cfg.lastBuild && store.cfg.lastBuild !== BUILD)
