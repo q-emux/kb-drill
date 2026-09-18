@@ -138,7 +138,7 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-09-16 · build 20260916-1851.6655012 · 417 carte LEAN / 1091 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
+    <div class="meta">2026-09-18 · build 20260918-0658.6655012 · 417 carte LEAN / 1091 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
   </header>
 
   <div class="bar">
@@ -584,32 +584,41 @@ function alignOne(target, ans, from0, expect){
 const ING_TRIG = /^(?:stop|stops|stopped|keep|keeps|kept|avoid|avoids|avoided|enjoy|enjoys|enjoyed|mind|minds|minded|finish|finishes|finished|start|starts|started|begin|begins|began|consider|considers|suggest|suggests|recommend|recommends|practise|practice|imagine|imagines|risk|risks|admit|admits|deny|denies|miss|misses|quit|quits|worth|like|likes|liked|love|loves|hate|hates|after|before|while|without|by|instead)$/;
 const PP_TRIG = /^(?:was|were|is|are|am|been|being|be|get|got|gets|have|has|had)$/;
 function expectedForm(c){
-  // che forma chiede la frase nel punto del buco: gerundio, base, participio
+  // la forma attesa la dice la frase modello della KB, non una regola indovinata:
+  // dopo 'were' puo' esserci un passivo ('were carried out') o un progressivo ('were pounding')
   const f = String(c.f || ''), i = f.indexOf('______');
   if(i < 0) return null;
-  const before = f.slice(0, i).toLowerCase().trim().split(/\s+/);
-  const prev = (before[before.length - 1] || '').replace(/[^a-z']/g, '');
+  const before = nrmLight(f.slice(0, i)).split(' ').filter(Boolean);
+  const prev = before[before.length - 1] || '';
+  const model = nrmLight(modelSentence(c)).split(' ').filter(Boolean);
+  if(prev && model.length > 1){
+    for(let k = 0; k < model.length - 1; k++){
+      if(model[k] === prev){
+        const w = model[k + 1];
+        if(isIng(w)) return 'ing';
+        if(isParticiple(w)) return 'pp';
+        return 'base';
+      }
+    }
+  }
   if(ING_TRIG.test(prev)) return 'ing';
   if(prev === 'to') return 'base';
-  if(PP_TRIG.test(prev)) return 'pp';
-  return null;
+  return null;                       // senza prova nel modello, non si tira a indovinare
 }
 function shapeNote(c, ans){
-  // cosa chiede la frase appena prima del buco: passivo, base, gerundio
-  const f = String(c.f || '');
-  const i = f.indexOf('______');
+  const f = String(c.f || ''), i = f.indexOf('______');
   if(i < 0) return '';
-  const before = f.slice(0, i).toLowerCase().trim().split(/\s+/);
-  const prev = before[before.length - 1] || '', prev2 = before[before.length - 2] || '';
-  const a = String(ans).toLowerCase().trim();
-  const firstWord = a.split(/\s+/)[0] || '';
-  if(/^(?:was|were|is|are|am|been|being|be)$/.test(prev) && isIng(firstWord))
-    return 'la frase \u00e8 passiva: dopo \u00ab' + prev + '\u00bb serve il participio passato';
-  if(prev === 'to' && isIng(firstWord))
+  const before = nrmLight(f.slice(0, i)).split(' ').filter(Boolean);
+  const prev = before[before.length - 1] || '';
+  const firstWord = nrmLight(ans).split(' ').filter(Boolean)[0] || '';
+  if(!firstWord || firstWord.length < 3) return '';
+  const exp = expectedForm(c);
+  if(exp === 'pp' && isIng(firstWord))
+    return 'qui dopo \u00ab' + prev + '\u00bb serve il participio passato';
+  if(exp === 'ing' && !isIng(firstWord))
+    return 'dopo \u00ab' + prev + '\u00bb serve il gerundio (-ing)';
+  if(exp === 'base' && isIng(firstWord) && prev === 'to')
     return 'dopo \u00abto\u00bb serve la forma base del verbo';
-  if((ING_TRIG.test(prev) || ING_TRIG.test(prev2)) &&
-     !isIng(firstWord) && firstWord.length > 2)
-    return 'dopo \u00ab' + (ING_TRIG.test(prev) ? prev : prev2) + '\u00bb serve il gerundio (-ing)';
   return '';
 }
 function judge(c, ans){
@@ -777,6 +786,7 @@ function buildSession(){
     queue = shuffle(shuffle(due).concat(shuffle(fresh).slice(0, room)));
   }
   total = queue.length; retired = 0; session = new Map(); stats = {};
+  store.session = null;
   renderChrome(); next();
 }
 
@@ -787,12 +797,35 @@ function addMore(n){
   queue = queue.concat(extra); total += extra.length; next();
 }
 
+function saveSession(){
+  store.session = {day: today(), mode: mode, set: set,
+                   cats: Array.from(active).sort().join(','),
+                   q: queue.map(c => c.i), cur: current ? current.i : null,
+                   retired: retired, total: total, ts: Date.now()};
+  save();
+}
+function restoreSession(){
+  const s = store.session;
+  if(!s || s.day !== today() || s.mode !== mode || s.set !== set) return false;
+  if(s.cats !== Array.from(active).sort().join(',')) return false;
+  if(Date.now() - (s.ts || 0) > 6 * 3600 * 1000) return false;      // ripresa entro poche ore
+  const byId = {};
+  for(const c of DATA) byId[c.i] = c;
+  const q = (s.q || []).map(i => byId[i]).filter(Boolean);
+  const cur = s.cur ? byId[s.cur] : null;
+  if(!cur) return false;
+  queue = q; current = cur; retired = s.retired || 0; total = s.total || (q.length + 1);
+  flipped = false; verdict = null; showHint = false;
+  renderChrome(); render();
+  return true;
+}
 function next(){
   flipped = false; verdict = null;
   current = queue.shift() || null;
   const cs = current ? session.get(current.i) : null;
   const rec = current ? store.cards[current.i] : null;
   showHint = !!((cs && cs.wrong > 0) || (rec && rec.wrong > 0 && rec.box === 0));
+  saveSession();
   render();
 }
 
@@ -1071,8 +1104,10 @@ function importProgress(file){
   r.readAsText(file);
 }
 function resetMemory(){
-  if(!confirm('Azzerare la memoria dei progressi su questo dispositivo? L\'operazione non si annulla.')) return;
-  store = {cards:{}, cfg:store.cfg, day:today(), newToday:0};
+  if(!confirm('Azzerare i progressi (livelli e scadenze) su questo dispositivo?\\n' +
+              'Impostazioni e segnalazioni per Claude restano. L\'operazione non si annulla.')) return;
+  store = {cards:{}, cfg:store.cfg, day:today(), newToday:0,
+           review:(store.review || [])};     // le segnalazioni per Claude restano
   save(); buildSession(); toast('Memoria azzerata.');
 }
 
@@ -1107,7 +1142,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20260916-1851.6655012';
+const BUILD = '20260918-0658.6655012';
 if(location.protocol === 'https:' && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg => {
     if(store.cfg.lastBuild && store.cfg.lastBuild !== BUILD)
@@ -1119,7 +1154,8 @@ if(location.protocol === 'https:' && 'serviceWorker' in navigator){
 
 seg('mToday', mode==='today'); seg('mAll', mode==='all');
 seg('mLean', set==='lean');   seg('mFull', set==='full');
-buildSession();
+// tornando dalla ricerca nella KB si riprende dalla carta dove eri
+if(!restoreSession()) buildSession();
 </script>
 </body>
 </html>
