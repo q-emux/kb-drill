@@ -138,7 +138,7 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-09-18 · build 20260918-2038.92c6d3d · 424 carte LEAN / 1098 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
+    <div class="meta">2026-09-19 · build 20260919-1140.92c6d3d · 424 carte LEAN / 1098 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
   </header>
 
   <div class="bar">
@@ -358,6 +358,9 @@ function nrmLight(s){
   // normalizzazione leggera: NON toglie be/have/articoli, ma scioglie le contrazioni
   // (there's = there is) perche' sono la stessa cosa e non vanno segnalate come differenza
   return String(s).toLowerCase().replace(/[\u2018\u2019\u2032]/g, "'")
+    // i segnaposto possessivi diventano un possessivo qualunque, PRIMA di sciogliere il 's:
+    // altrimenti "one's" si trasformerebbe in "one is"
+    .replace(/\b(?:one's|someone's|somebody's|sb's)\b/g, 'my')
     .replace(/n't\b/g, ' not')
     .replace(/'re\b/g, ' are').replace(/'ve\b/g, ' have').replace(/'ll\b/g, ' will')
     .replace(/'m\b/g, ' am').replace(/'s\b/g, ' is').replace(/'d\b/g, ' would')
@@ -539,13 +542,22 @@ function alignOne(target, ans, from0, expect){
   if(!tw.length || !aw.length) return null;
   const pos = [], kind = [];
   let i = from0 || 0;
-  for(const t of tw){
+  for(let ti = 0; ti < tw.length; ti++){
+    const t = tw[ti];
     let found = -1;
     for(let k = i; k < aw.length; k++) if(wordEq(aw[k], t)){ found = k; break; }
     if(found < 0 && WILD.test(t)){
-      // l'oggetto generico e' stato esplicitato: consuma la parola che lo sostituisce
-      for(let k = i; k < aw.length; k++) if(pos.indexOf(k) < 0){ found = k; break; }
+      // l'oggetto generico esplicitato consuma la parola che lo sostituisce,
+      // ma non una che serve a un pezzo successivo dell'espressione
+      for(let k = i; k < aw.length; k++){
+        if(pos.indexOf(k) >= 0) continue;
+        let serveDopo = false;
+        for(let tj = ti + 1; tj < tw.length; tj++) if(wordEq(aw[k], tw[tj])){ serveDopo = true; break; }
+        if(serveDopo) continue;
+        found = k; break;
+      }
       if(found >= 0){ pos.push(found); kind.push(1); i = found + 1; continue; }
+      pos.push(-1); kind.push(0); continue;
     }
     if(found < 0){ pos.push(-1); kind.push(0); continue; }
     pos.push(found); kind.push(wordKind(aw[found], t)); i = found + 1;
@@ -554,11 +566,17 @@ function alignOne(target, ans, from0, expect){
   if(hit.length < Math.max(1, Math.ceil(tw.length * 0.6))) return null;
   const from = hit[0], to = hit[hit.length - 1];
   const intruders = [];
+  // se l'espressione comincia con un oggetto generico ('it doesn't sit right'), il soggetto
+  // esplicito della tua frase puo' essere lungo quanto vuole: non e' un'intrusione
+  let firstReal = -1;
+  for(let k = 0; k < tw.length; k++)
+    if(pos[k] >= 0 && !WILD.test(tw[k])){ firstReal = pos[k]; break; }
   // ogni segnaposto del target (someone/something) puo' essere riempito da una parola
   let slots = tw.filter(w => /^(?:something|someone|somebody|sth|sb|one.s|oneself)$/.test(w)).length;
   let objSlots = tw.filter(w => /^(?:it|them|this|that)$/.test(w)).length;   // budget per il sintagma che esplicita l oggetto
   for(let k = from; k <= to; k++){
     if(pos.indexOf(k) >= 0) continue;
+    if(firstReal >= 0 && k < firstReal) continue;                   // fa parte del soggetto
     const w = aw[k].replace(/^'+/, '');
     if(AUX.test(w) || AUX.test(aw[k].split("'").pop())) continue;   // ausiliari: ammessi
     if(slots > 0){ slots--; continue; }                             // riempie uno slot
@@ -654,6 +672,12 @@ function judge(c, ans){
   // un'alternativa, va comunque verificato nella forma
   if(v.cls === 'hit' && ((v.qual || 3) < 2 || v.label.indexOf('alternativa') < 0)){
     const al = alignCheck(bestTarget(c, ans), ans, expectedForm(c));
+    if(!al && (v.qual || 3) < 2){
+      // l'espressione non si allinea con la risposta: non e' un riscontro pieno
+      v.cls = 'near';
+      v.label = 'Ci sei quasi \u2014 controlla la forma esatta';
+      v.note = diffNote(bestTarget(c, ans), ans);
+    }
     if(al && (al.structural > 0 || al.infl >= 2 || al.intruders.length || al.missing.length)){
       const bits = [];
       if(al.missing.length) bits.push('manca \u00ab' + al.missing.join(' ') + '\u00bb');
@@ -1157,7 +1181,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20260918-2038.92c6d3d';
+const BUILD = '20260919-1140.92c6d3d';
 if(location.protocol === 'https:' && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg => {
     if(store.cfg.lastBuild && store.cfg.lastBuild !== BUILD)
