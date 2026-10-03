@@ -42,6 +42,9 @@
   .res mark{background:#FBF2DF;color:inherit;border-radius:3px;padding:0 2px}
   .empty{padding:36px 10px;text-align:center;color:var(--slate);line-height:1.6}
   .weak{font-size:.75rem;color:var(--star);margin-bottom:10px;font-weight:700}
+  .filtro{font-size:.75rem;color:#8A4B00;background:#FDF3E3;border:1px solid #F0D9B5;
+          border-radius:8px;padding:8px 11px;margin-bottom:10px;cursor:pointer;line-height:1.45}
+  .filtro b{font-weight:800}
   footer{margin-top:22px;font-size:.66rem;color:var(--slate);text-align:center;line-height:1.5}
 </style>
 </head>
@@ -191,7 +194,12 @@ function run(){
     return;
   }
   var res = KB.map(function(e){ return {e: e, s: score(e, toks, q)}; }).filter(function(x){ return x.s > 0; });
-  if(active) res = res.filter(function(x){ return groupOf(x.e) === active; });
+  var esclusi = 0;
+  if(active){
+    var prima = res.length;
+    res = res.filter(function(x){ return groupOf(x.e) === active; });
+    esclusi = prima - res.length;          // quanti ne nasconde il filtro di categoria
+  }
   res.sort(function(a, b){ return b.s - a.s || a.e.t.length - b.e.t.length; });
   var strong = res.filter(function(x){ return x.s >= 14; });
   var shown = (strong.length ? strong : res).slice(0, 30);
@@ -202,6 +210,9 @@ function run(){
   }
   var head = strong.length ? '' :
     '<div class="weak">Nessuna corrispondenza netta: ecco le voci pi\u00f9 vicine.</div>';
+  if(esclusi > 0)
+    head = '<div class="filtro" id="offfilter">Filtro <b>' + active + '</b> attivo: altri ' + esclusi +
+           ' risultati in altre categorie \u2014 tocca per vedere tutto</div>' + head;
   out.innerHTML = head + shown.map(function(x){
     var e = x.e, g = groupOf(e), sub = (e.c || e.s);
     var cat = (sub && sub.toUpperCase() !== g.toUpperCase()) ? g + ' &middot; ' + esc(sub) : g;
@@ -221,6 +232,8 @@ function renderChips(){
       return '<button class="chip ' + (active === g ? 'on' : '') + '" data-g="' + g + '">' + g +
              ' <span>' + counts[g] + '</span></button>';
     }).join('');
+  var off = document.getElementById('offfilter');
+  if(off) off.onclick = function(){ active = null; renderChips(); run(); };
   var els = document.querySelectorAll('.chip[data-g]');
   for(var k = 0; k < els.length; k++) els[k].onclick = (function(el){
     return function(){ active = (active === el.dataset.g) ? null : el.dataset.g; renderChips(); run(); };
