@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#2A9D8F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="English">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>English Kids</title>
+<style>
+  :root{
+    --bg:#FFF8EC; --card:#FFFFFF; --ink:#2B2D42; --muted:#6B7280; --line:#F0E4CF;
+    --pri:#2A9D8F; --acc:#F4A261; --ok:#2A9D8F; --ok-bg:#E3F4F1; --ok-ink:#115E55;
+    --no:#E76F51; --no-bg:#FCE9E3; --no-ink:#9A3B22; --hint:#FFE8B5; --hint-ink:#7A4E00;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-text-size-adjust:100%}
+  body{min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  header{width:100%; max-width:520px; display:flex; align-items:center; justify-content:space-between; padding:12px 16px 4px}
+  .brand{font-weight:800; font-size:1.1rem; color:var(--pri); letter-spacing:.01em}
+  .stars{font-weight:700; background:#fff; border:2px solid var(--line); border-radius:999px; padding:4px 10px; font-size:.95rem}
+  .gear{background:none; border:0; font-size:1.45rem; padding:4px 6px; cursor:pointer; line-height:1}
+  main{width:100%; max-width:520px; padding:8px 16px 32px}
+  .card{background:var(--card); border-radius:18px; box-shadow:0 6px 24px rgba(60,40,10,.08); padding:18px}
+  button{font:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none}
+  .btn{display:block; width:100%; border:0; border-radius:14px; padding:15px 16px; font-size:1.05rem; font-weight:700;
+       cursor:pointer; background:var(--pri); color:#fff; margin-top:12px}
+  .btn.ghost{background:#fff; color:var(--ink); border:2px solid var(--line)}
+  .btn.soft{background:var(--hint); color:var(--hint-ink)}
+  .btn:disabled{opacity:.5; cursor:default}
+  .opt{display:block; width:100%; text-align:left; border:2px solid var(--line); background:#fff; border-radius:14px;
+       padding:14px 14px; font-size:1.05rem; margin-top:10px; cursor:pointer; color:var(--ink); line-height:1.3}
+  .opt:not(:disabled):active{transform:scale(.985)}
+  .opt.ok{background:var(--ok-bg); border-color:var(--ok); color:var(--ok-ink); font-weight:700}
+  .opt.no{background:var(--no-bg); border-color:var(--no); color:var(--no-ink); animation:shake .45s}
+  .opt.dim{opacity:.35; text-decoration:line-through}
+  .opt:disabled{cursor:default}
+  .pill{font-size:.72rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--pri);
+        background:var(--ok-bg); border-radius:999px; padding:3px 10px; display:inline-block; margin-bottom:10px}
+  .sentence{font-size:1.3rem; line-height:1.5; font-weight:600}
+  .gap{display:inline-block; min-width:4.5ch; border-bottom:3px solid var(--acc); color:var(--acc); text-align:center; padding:0 5px}
+  .gap.filled{border-bottom-color:var(--ok); color:var(--ok-ink); background:var(--ok-bg); border-radius:6px}
+  .trans{margin-top:10px; color:var(--muted); font-size:1rem; line-height:1.45}
+  .trans b{color:var(--ink)}
+  .top{display:flex; align-items:center; gap:12px; margin-bottom:12px}
+  .bar{flex:1; height:10px; background:var(--line); border-radius:999px; overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--pri); border-radius:999px; transition:width .3s}
+  .count{font-size:.85rem; color:var(--muted); font-weight:700; min-width:3.5ch; text-align:right}
+  .fb{margin-top:14px; padding:12px 14px; border-radius:14px; background:var(--ok-bg); animation:pop .25s ease}
+  .fb.bad{background:var(--no-bg)}
+  .fb .big{font-size:1.4rem; font-weight:800}
+  .fb .gloss{margin-top:4px; font-size:1rem}
+  .fb .stars-won{font-size:.9rem; color:var(--muted); margin-top:2px}
+  .hinttxt{margin-top:12px; padding:10px 12px; background:var(--hint); color:var(--hint-ink); border-radius:12px; font-size:.95rem; line-height:1.4}
+  .row{display:flex; gap:10px}
+  .row .btn{flex:1}
+  .link{background:none; border:0; color:var(--muted); text-decoration:underline; font-size:.85rem; padding:10px 0 0; cursor:pointer; display:block; margin:0 auto}
+  .mascot{width:150px; height:150px; margin:0 auto; display:block; flex:none}
+  .mascot.sm{width:60px; height:60px; margin:0}
+  .mascot.idle{animation:float 3s ease-in-out infinite}
+  .mascot.happy{animation:jump .7s ease}
+  .mascot.oops{animation:shake .5s ease}
+  .mascot .e-happy,.mascot .e-oops,.mascot .m-happy,.mascot .m-oops,.mascot .c-happy,.mascot .sweat{display:none}
+  .mascot.happy .e-idle,.mascot.happy .m-idle{display:none}
+  .mascot.happy .e-happy,.mascot.happy .m-happy,.mascot.happy .c-happy{display:block}
+  .mascot.oops .e-idle,.mascot.oops .m-idle{display:none}
+  .mascot.oops .e-oops,.mascot.oops .m-oops,.mascot.oops .sweat{display:block}
+  .home h1{font-size:1.45rem; margin:10px 0 4px; text-align:center}
+  .home p{text-align:center; color:var(--muted); margin:4px 0; line-height:1.45}
+  .home p b{color:var(--ink)}
+  .streak{display:flex; justify-content:center; gap:16px; margin:12px 0 4px; font-weight:700; font-size:1rem}
+  .done h2{text-align:center; margin:8px 0 4px; font-size:1.5rem}
+  .statline{text-align:center; font-size:1.05rem; margin:6px 0; line-height:1.45}
+  .small{font-size:.85rem; color:var(--muted)}
+  .center{text-align:center}
+  .toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:#2B2D42; color:#fff;
+         padding:10px 14px; border-radius:12px; font-size:.95rem; z-index:70; max-width:88vw; text-align:center}
+  #fx{position:fixed; inset:0; pointer-events:none; z-index:40}
+  #panel{position:fixed; inset:0; background:rgba(43,45,66,.35); z-index:60; display:flex; justify-content:center; align-items:flex-end}
+  #panel[hidden]{display:none}
+  .sheet{background:#fff; width:100%; max-width:520px; border-radius:22px 22px 0 0;
+         padding:14px 18px calc(22px + env(safe-area-inset-bottom)); max-height:88vh; overflow:auto}
+  .sheet .head{display:flex; align-items:center; justify-content:space-between}
+  .sheet h2{margin:0; font-size:1.15rem}
+  .sheet h3{margin:16px 0 8px; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)}
+  .chips{display:flex; gap:8px}
+  .chip{flex:1; border:2px solid var(--line); background:#fff; border-radius:12px; padding:11px; font-weight:700; cursor:pointer; font-size:1rem}
+  .chip.on{border-color:var(--pri); background:var(--ok-bg); color:var(--ok-ink)}
+  .sw{display:flex; align-items:center; justify-content:space-between; padding:6px 0}
+  .sw input{width:22px; height:22px}
+  .sheet .btn{margin-top:8px; padding:12px}
+  .close{background:none; border:0; font-size:1.5rem; padding:4px 8px; cursor:pointer; color:var(--muted)}
+  .ver{margin-top:16px; font-size:.75rem; color:var(--muted); text-align:center}
+  .ver button{background:none; border:0; color:var(--pri); text-decoration:underline; font-size:.75rem; cursor:pointer}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  @keyframes jump{0%{transform:translateY(0)}30%{transform:translateY(-18px) rotate(-5deg)}55%{transform:translateY(0)}75%{transform:translateY(-8px) rotate(4deg)}100%{transform:translateY(0)}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @keyframes pop{0%{transform:scale(.92); opacity:0}100%{transform:scale(1); opacity:1}}
+  @media (prefers-reduced-motion: reduce){ .mascot, .opt, .fb{animation:none !important} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">English Kids</div>
+  <div style="display:flex; align-items:center; gap:6px">
+    <div class="stars" id="stars">⭐ 0</div>
+    <button class="gear" id="panelBtn" aria-label="Impostazioni">⚙️</button>
+  </div>
+</header>
+<main id="stage"></main>
+<canvas id="fx"></canvas>
+
+<div id="panel" hidden>
+  <div class="sheet">
+    <div class="head"><h2>Impostazioni</h2><button class="close" id="panelClose" aria-label="Chiudi">✕</button></div>
+    <h3>Carte nuove al giorno</h3>
+    <div class="chips" id="chips"></div>
+    <h3>Suoni</h3>
+    <label class="sw"><span>Suoni quando rispondi</span><input type="checkbox" id="sound"></label>
+    <h3>Segnala a Claude</h3>
+    <div class="small" id="revCount"></div>
+    <button class="btn ghost" id="btnReport">Copia il report per Claude</button>
+    <button class="btn ghost" id="btnRevClear">Svuota le segnalazioni</button>
+    <h3>Progressi</h3>
+    <button class="btn ghost" id="btnExport">Esporta progressi</button>
+    <button class="btn ghost" id="btnImport">Importa progressi</button>
+    <input type="file" id="fileIn" accept="application/json,.json" hidden>
+    <button class="btn ghost" id="btnReset" style="color:var(--no-ink)">Ricomincia da capo</button>
+    <div class="ver">versione 20261003-1943.2cafe32 · <button id="btnUpd">cerca aggiornamenti</button></div>
+  </div>
+</div>
+
+<template id="mascotTpl">
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="46" cy="58" r="24" fill="#F2B544" stroke="#5C3A1E" stroke-width="4"/>
+  <circle cx="154" cy="58" r="24" fill="#F2B544" stroke="#5C3A1E" stroke-width="4"/>
+  <circle cx="46" cy="58" r="11" fill="#E8907A"/><circle cx="154" cy="58" r="11" fill="#E8907A"/>
+  <circle cx="100" cy="112" r="72" fill="#F2B544" stroke="#5C3A1E" stroke-width="4"/>
+  <g fill="#5C3A1E">
+    <circle cx="62" cy="70" r="5"/><circle cx="138" cy="70" r="5"/><circle cx="48" cy="112" r="4.5"/>
+    <circle cx="152" cy="112" r="4.5"/><circle cx="76" cy="52" r="4"/><circle cx="124" cy="52" r="4"/>
+    <circle cx="100" cy="46" r="4.5"/><circle cx="56" cy="140" r="4"/><circle cx="144" cy="140" r="4"/>
+  </g>
+  <ellipse cx="100" cy="148" rx="34" ry="24" fill="#FFF6E5" stroke="#5C3A1E" stroke-width="3"/>
+  <path d="M72 118 Q68 136 80 152" stroke="#2B1B10" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M128 118 Q132 136 120 152" stroke="#2B1B10" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="100" cy="138" rx="10" ry="7" fill="#3B2416"/>
+  <g class="e-idle">
+    <ellipse cx="76" cy="104" rx="13" ry="15" fill="#fff" stroke="#5C3A1E" stroke-width="3"/>
+    <ellipse cx="124" cy="104" rx="13" ry="15" fill="#fff" stroke="#5C3A1E" stroke-width="3"/>
+    <circle cx="79" cy="107" r="7" fill="#2B1B10"/><circle cx="121" cy="107" r="7" fill="#2B1B10"/>
+    <circle cx="82" cy="103" r="2.5" fill="#fff"/><circle cx="124" cy="103" r="2.5" fill="#fff"/>
+  </g>
+  <g class="e-happy" fill="none" stroke="#2B1B10" stroke-width="5" stroke-linecap="round">
+    <path d="M64 108 Q76 92 88 108"/><path d="M112 108 Q124 92 136 108"/>
+  </g>
+  <g class="e-oops">
+    <ellipse cx="76" cy="104" rx="15" ry="17" fill="#fff" stroke="#5C3A1E" stroke-width="3"/>
+    <ellipse cx="124" cy="104" rx="15" ry="17" fill="#fff" stroke="#5C3A1E" stroke-width="3"/>
+    <circle cx="76" cy="106" r="5" fill="#2B1B10"/><circle cx="124" cy="106" r="5" fill="#2B1B10"/>
+    <path d="M62 86 L88 79" stroke="#5C3A1E" stroke-width="4" stroke-linecap="round"/>
+    <path d="M138 86 L112 79" stroke="#5C3A1E" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <path class="m-idle" d="M88 154 Q100 166 112 154" stroke="#2B1B10" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <g class="m-happy"><path d="M84 152 Q100 178 116 152 Z" fill="#2B1B10"/><ellipse cx="100" cy="163" rx="7" ry="4" fill="#E8907A"/></g>
+  <ellipse class="m-oops" cx="100" cy="158" rx="6" ry="7" fill="#2B1B10"/>
+  <g class="c-happy" fill="#F08A7A" opacity=".7"><circle cx="56" cy="126" r="8"/><circle cx="144" cy="126" r="8"/></g>
+  <path class="sweat" d="M168 90 q9 13 0 20 q-9 -7 0 -20 z" fill="#7FC8F8" stroke="#3A8ED6" stroke-width="2"/>
+</svg>
+</template>
+
+<script>
+/*__ENGINE_START__*/
+/* Motore puro: niente DOM. Testato a parte con Node (test_engine.js). */
+const KEY = 'kbkids.v1';
+const INTERVALS = [1, 2, 4, 7, 14, 30];      // giorni per box 1..6 (più corti del drill C1)
+const MAX_DUE = 20;                           // tetto di ripassi in una sessione
+const FREE_N = 10;                            // carte per un giro di allenamento libero
+const DEFAULT_NEW = 6;
+const APP_NAME = "English Kids";
+const DATA = [{"i": "phrasal-verbs:get-up", "c": "Phrasal verbs", "t": "get up", "g": "alzarsi (dal letto)", "f": "On race days I **get up** at six.", "a": "get up", "tr": "Nei giorni di gara mi **alzo** alle sei.", "h": "Dal letto, in piedi.", "d": ["wake up", "put on", "give up"]}, {"i": "phrasal-verbs:wake-up", "c": "Phrasal verbs", "t": "wake up", "g": "svegliarsi", "f": "I **wake up** at seven, but I stay in bed for ten minutes.", "a": "wake up", "tr": "Mi **sveglio** alle sette, ma resto a letto per dieci minuti.", "h": "Occhi aperti, ma ancora a letto.", "d": ["get up", "look up", "turn up"]}, {"i": "phrasal-verbs:look-for", "c": "Phrasal verbs", "t": "look for", "g": "cercare", "f": "I'm **looking for** my sketchbook. Have you seen it?", "a": "looking for", "tr": "Sto **cercando** il mio album da disegno. L'hai visto?", "h": "È sparito e lo vuoi ritrovare.", "d": ["looking after", "looking at", "looking up"]}, {"i": "phrasal-verbs:turn-on", "c": "Phrasal verbs", "t": "turn on", "g": "accendere", "f": "Can you **turn on** the light? I can't see my drawing.", "a": "turn on", "tr": "Puoi **accendere** la luce? Non vedo il mio disegno.", "h": "Click, e c'è luce.", "d": ["turn off", "turn up", "put on"]}, {"i": "phrasal-verbs:turn-off", "c": "Phrasal verbs", "t": "turn off", "g": "spegnere", "f": "**Turn off** the tablet, you can finish your story tomorrow.", "a": "Turn off", "tr": "**Spegni** il tablet, la storia la finisci domani.", "h": "Il contrario di turn on.", "d": ["Turn on", "Take off", "Turn up"]}, {"i": "phrasal-verbs:put-on", "c": "Phrasal verbs", "t": "put on", "g": "mettersi (vestiti, scarpe)", "f": "**Put on** your running shoes, we're late for training!", "a": "Put on", "tr": "**Mettiti** le scarpe da corsa, siamo in ritardo per l'allenamento!", "h": "Vestiti e scarpe addosso.", "d": ["Take off", "Turn on", "Get on"]}, {"i": "phrasal-verbs:take-off", "c": "Phrasal verbs", "t": "take off", "g": "togliersi (vestiti, scarpe)", "f": "**Take off** your muddy shoes before you come in!", "a": "Take off", "tr": "**Togliti** le scarpe infangate prima di entrare!", "h": "Il contrario di put on.", "d": ["Put on", "Turn off", "Give back"]}, {"i": "phrasal-verbs:give-back", "c": "Phrasal verbs", "t": "give back", "g": "restituire", "f": "Can you **give back** my coloured pencils tomorrow?", "a": "give back", "tr": "Mi puoi **restituire** le matite colorate domani?", "h": "Era mio: me lo ridai.", "d": ["give up", "get back", "take off"]}, {"i": "phrasal-verbs:pick-up", "c": "Phrasal verbs", "t": "pick up", "g": "passare a prendere (una persona)", "f": "Dad **picks me up** after athletics.", "a": "picks me up", "tr": "Papà **passa a prendermi** dopo atletica.", "h": "In macchina, all'uscita.", "d": ["wakes me up", "puts me on", "gives me back"]}, {"i": "phrasal-verbs:look-after", "c": "Phrasal verbs", "t": "look after", "g": "badare a, prendersi cura di", "f": "I **look after** my neighbour's cat when she's on holiday.", "a": "look after", "tr": "**Bado** al gatto della vicina quando lei è in vacanza.", "h": "Cibo, acqua e coccole a un animale.", "d": ["look for", "look at", "look up"]}, {"i": "espressioni:never-mind", "c": "Espressioni", "t": "Never mind.", "g": "Non importa. / Fa niente.", "f": "A: Sorry, I forgot your pencil. B: **Never mind**, I've got another one.", "a": "Never mind", "tr": "A: Scusa, ho dimenticato la tua matita. B: **Non importa**, ne ho un'altra.", "h": "Lo dici per dire che non è un problema.", "d": ["Hang on", "No way", "Well done"]}, {"i": "espressioni:hang-on", "c": "Espressioni", "t": "Hang on!", "g": "Aspetta un attimo!", "f": "**Hang on**, I'm coming! I'm just putting my shoes on.", "a": "Hang on", "tr": "**Aspetta un attimo**, arrivo! Mi sto solo mettendo le scarpe.", "h": "Un secondo, quasi pronta.", "d": ["Hurry up", "Never mind", "Well done"]}, {"i": "espressioni:what-a-pity", "c": "Espressioni", "t": "What a pity!", "g": "Che peccato!", "f": "The race is cancelled because of the rain? **What a pity**!", "a": "What a pity", "tr": "La gara è annullata per la pioggia? **Che peccato**!", "h": "Dispiacere per una brutta notizia.", "d": ["No way", "Well done", "Never mind"]}, {"i": "espressioni:hurry-up", "c": "Espressioni", "t": "Hurry up!", "g": "Sbrigati!", "f": "**Hurry up**, the bus leaves in two minutes!", "a": "Hurry up", "tr": "**Sbrigati**, l'autobus parte tra due minuti!", "h": "Più veloce!", "d": ["Hang on", "Never mind", "What a pity"]}, {"i": "espressioni:well-done", "c": "Espressioni", "t": "Well done!", "g": "Brava! / Ben fatto!", "f": "You won the 60 metres? **Well done**!", "a": "Well done", "tr": "Hai vinto i 60 metri? **Brava**!", "h": "Complimenti!", "d": ["What a pity", "Never mind", "Hang on"]}, {"i": "espressioni:no-way", "c": "Espressioni", "t": "No way!", "g": "Ma dai! / Non ci credo!", "f": "A: My cat can open the fridge. B: **No way**!", "a": "No way", "tr": "A: Il mio gatto sa aprire il frigo. B: **Ma dai**!", "h": "Sorpresa: non ci credi.", "d": ["Never mind", "Well done", "Hang on"]}, {"i": "espressioni:it-s-your-turn", "c": "Espressioni", "t": "It's your turn.", "g": "Tocca a te.", "f": "**It's your turn**. Roll the dice!", "a": "It's your turn", "tr": "**Tocca a te**. Tira i dadi!", "h": "Nei giochi, quando l'altro ha finito.", "d": ["It's my turn", "It's your time", "It's your round"]}, {"i": "espressioni:i-m-starving", "c": "Espressioni", "t": "I'm starving!", "g": "Ho una fame da lupi!", "f": "What's for dinner? **I'm starving**!", "a": "I'm starving", "tr": "Cosa c'è per cena? **Ho una fame da lupi**!", "h": "Fame, tanta.", "d": ["I'm boring", "I'm freezing", "I'm starting"]}, {"i": "espressioni:i-can-t-wait", "c": "Espressioni", "t": "I can't wait!", "g": "Non vedo l'ora!", "f": "The school trip to the zoo is on Friday. **I can't wait**!", "a": "I can't wait", "tr": "La gita allo zoo è venerdì. **Non vedo l'ora**!", "h": "Vorresti che fosse già venerdì.", "d": ["I can't see the hour", "I can't stop", "I don't wait"]}, {"i": "espressioni:can-i-borrow", "c": "Espressioni", "t": "Can I borrow…?", "g": "Mi presti…?", "f": "**Can I borrow** your rubber? I've made a mistake.", "a": "Can I borrow", "tr": "**Mi presti** la gomma? Ho fatto un errore.", "h": "Ti serve una cosa di un altro, poi la ridai.", "d": ["Can I lend", "Can you borrow", "Can I bring"]}, {"i": "collocazioni:make-a-mistake", "c": "Collocazioni", "t": "make a mistake", "g": "fare un errore", "f": "Don't worry, everybody **makes mistakes**.", "a": "makes mistakes", "tr": "Non ti preoccupare, tutti **fanno errori**.", "h": "Stesso verbo di make a cake.", "d": ["does mistakes", "takes mistakes", "has mistakes"]}, {"i": "collocazioni:have-fun", "c": "Collocazioni", "t": "have fun", "g": "divertirsi", "f": "**Have fun** at the athletics camp!", "a": "Have fun", "tr": "**Divertiti** al camp di atletica!", "h": "Stesso verbo di have breakfast.", "d": ["Make fun", "Do fun", "Take fun"]}, {"i": "collocazioni:take-a-photo", "c": "Collocazioni", "t": "take a photo", "g": "fare una foto", "f": "Can you **take a photo** of me and this puppy?", "a": "take a photo", "tr": "Mi **fai una foto** con questo cucciolo?", "h": "In inglese la foto non si \"fa\".", "d": ["make a photo", "do a photo", "get a photo"]}, {"i": "collocazioni:do-homework", "c": "Collocazioni", "t": "do homework", "g": "fare i compiti", "f": "I **do my homework** before training.", "a": "do my homework", "tr": "**Faccio i compiti** prima dell'allenamento.", "h": "Stesso verbo di do the dishes.", "d": ["make my homework", "take my homework", "have my homework"]}, {"i": "collocazioni:have-breakfast", "c": "Collocazioni", "t": "have breakfast", "g": "fare colazione", "f": "I **have breakfast** at seven: milk and biscuits.", "a": "have breakfast", "tr": "**Faccio colazione** alle sette: latte e biscotti.", "h": "Stesso verbo di have lunch.", "d": ["make breakfast", "do breakfast", "take breakfast"]}, {"i": "collocazioni:make-the-bed", "c": "Collocazioni", "t": "make the bed", "g": "rifare il letto", "f": "**Make your bed** before you go to school.", "a": "Make your bed", "tr": "**Rifai il letto** prima di andare a scuola.", "h": "Non si fa con do.", "d": ["Do your bed", "Set your bed", "Take your bed"]}, {"i": "collocazioni:ride-a-bike", "c": "Collocazioni", "t": "ride a bike", "g": "andare in bici", "f": "I **ride my bike** to the track every afternoon.", "a": "ride my bike", "tr": "**Vado in bici** alla pista ogni pomeriggio.", "h": "Lo stesso verbo si usa per il cavallo.", "d": ["go my bike", "drive my bike", "walk my bike"]}, {"i": "collocazioni:make-friends", "c": "Collocazioni", "t": "make friends", "g": "fare amicizia", "f": "She **made friends** with everyone on the first day of school.", "a": "made friends", "tr": "**Ha fatto amicizia** con tutti il primo giorno di scuola.", "h": "Stesso verbo di make a cake.", "d": ["did friends", "took friends", "got friends"]}, {"i": "collocazioni:miss-the-bus", "c": "Collocazioni", "t": "miss the bus", "g": "perdere l'autobus", "f": "Quick, or we'll **miss the bus**!", "a": "miss the bus", "tr": "Veloci, o **perdiamo l'autobus**!", "h": "Lose è per le partite e gli oggetti.", "d": ["lose the bus", "leave the bus", "forget the bus"]}, {"i": "collocazioni:tell-the-truth", "c": "Collocazioni", "t": "tell the truth", "g": "dire la verità", "f": "**Tell the truth**: did you draw on the wall?", "a": "Tell the truth", "tr": "**Di' la verità**: hai disegnato sul muro?", "h": "Stesso verbo di tell a story.", "d": ["Say the truth", "Speak the truth", "Talk the truth"]}];
+const BY_ID = {};
+for (const c of DATA) BY_ID[c.i] = c;
+
+function pad2(n){ return String(n).padStart(2, '0'); }
+function today(){ const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function addDays(iso, n){
+  const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n);
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+function shuffle(a, rnd){
+  rnd = rnd || Math.random;
+  for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+function emptyStore(t){
+  return {v:1, app:'kbkids', cards:{}, cfg:{newPerDay:DEFAULT_NEW, sound:true}, day:t, newToday:0,
+          stars:0, days:[], review:[], session:null};
+}
+function normalizeStore(s, t){
+  if(!s || typeof s !== 'object' || !s.cards || typeof s.cards !== 'object') s = emptyStore(t);
+  s.v = 1; s.app = 'kbkids';
+  s.cfg = Object.assign({newPerDay:DEFAULT_NEW, sound:true}, s.cfg || {});
+  if(!Array.isArray(s.days)) s.days = [];
+  if(!Array.isArray(s.review)) s.review = [];
+  if(typeof s.stars !== 'number') s.stars = 0;
+  if(typeof s.newToday !== 'number') s.newToday = 0;
+  if(s.day !== t){ s.day = t; s.newToday = 0; }
+  return s;
+}
+function counts(store, t){
+  let due = 0, fresh = 0, seen = 0;
+  for(const c of DATA){
+    const r = store.cards[c.i];
+    if(!r) fresh++; else { seen++; if(r.due <= t) due++; }
+  }
+  return {due, fresh, seen, room: Math.max(0, store.cfg.newPerDay - store.newToday), tot: DATA.length};
+}
+// Sessione del giorno: ripassi scaduti (prima i più arretrati, tetto MAX_DUE) mescolati alle nuove entro il tetto giornaliero.
+function buildQueue(store, t, rnd){
+  const due = DATA.filter(c => store.cards[c.i] && store.cards[c.i].due <= t)
+                  .sort((a, b) => (store.cards[a.i].due < store.cards[b.i].due ? -1 : store.cards[a.i].due > store.cards[b.i].due ? 1 : 0));
+  const dueNow = due.slice(0, MAX_DUE);
+  const room = Math.max(0, store.cfg.newPerDay - store.newToday);
+  const fresh = shuffle(DATA.filter(c => !store.cards[c.i]), rnd).slice(0, room);
+  return {ids: shuffle(dueNow.concat(fresh), rnd).map(c => c.i), dueLeft: due.length - dueNow.length};
+}
+function buildFreeQueue(store, n, rnd){
+  return shuffle(DATA.filter(c => store.cards[c.i]), rnd).slice(0, n).map(c => c.i);
+}
+function fitCase(opt, answer){
+  if(!opt || !answer) return opt;
+  const f = answer.charAt(0);
+  const upper = f !== f.toLowerCase() && f === f.toUpperCase();
+  if(upper) return opt.charAt(0).toUpperCase() + opt.slice(1);
+  if(opt === 'I' || opt.indexOf('I ') === 0 || opt.indexOf("I'") === 0) return opt;
+  return opt.charAt(0).toLowerCase() + opt.slice(1);
+}
+function makeOptions(card, rnd){
+  const ds = shuffle(card.d.slice(), rnd).slice(0, 3).map(d => fitCase(d, card.a));
+  const opts = ds.map(d => ({text:d, ok:false}));
+  opts.push({text:card.a, ok:true});
+  return shuffle(opts, rnd);
+}
+function splitFront(f){
+  const m = /\*\*(.+?)\*\*/.exec(f);
+  return m ? {pre:f.slice(0, m.index), ans:m[1], post:f.slice(m.index + m[0].length)} : {pre:f, ans:'', post:''};
+}
+function newSession(mode, ids, t, now){
+  return {mode:mode, day:t, q:ids.slice(), cur:null, cs:{}, total:ids.length, done:0, firstRight:0, stars:0, dueLeft:0, ts:now};
+}
+// Valuta una risposta: aggiorna store e sessione, ritorna {done, stars}.
+//   giusta senza indizio  → box +1, stelle 2
+//   giusta con indizio    → box fermo (almeno 1), stelle 1
+//   giusta dopo un errore → box 1, domani, stelle 1
+//   sbagliata             → box 0, domani, la carta torna tra poco nella stessa sessione
+//   allenamento libero    → non fa salire di box; un errore però riporta la carta a domani
+function grade(store, ses, card, right, usedHint, t, now){
+  const id = card.i;
+  const isNew = !store.cards[id];
+  const rec = store.cards[id] || {box:0, due:t, seen:0, wrong:0, hint:0, last:0};
+  const cs = ses.cs[id] || (ses.cs[id] = {wrong:0, streak:0, counted:false});
+  if(!cs.counted){
+    cs.counted = true;
+    if(right && !usedHint) ses.firstRight++;
+    if(isNew && ses.mode === 'today') store.newToday++;
+  }
+  if(store.days.indexOf(t) < 0) store.days.push(t);
+  rec.seen++; rec.last = now;
+  if(usedHint) rec.hint++;
+  let done = false, stars = 0;
+  if(right){
+    cs.streak++;
+    if(ses.mode === 'free'){
+      done = true; stars = cs.wrong ? 0 : 1;
+    } else if(cs.wrong === 0){
+      if(usedHint){ rec.box = Math.max(1, rec.box); stars = 1; }
+      else { rec.box = Math.min(INTERVALS.length, rec.box + 1); stars = 2; }
+      rec.due = addDays(t, INTERVALS[rec.box - 1]); done = true;
+    } else {
+      rec.box = 1; rec.due = addDays(t, 1); stars = 1; done = true;
+    }
+  } else {
+    cs.wrong++; cs.streak = 0; rec.wrong++; rec.box = 0; rec.due = addDays(t, 1);
+  }
+  store.cards[id] = rec;
+  ses.stars += stars; store.stars += stars;
+  if(done) ses.done++;
+  return {done:done, stars:stars};
+}
+function requeuePos(qlen, rnd){ rnd = rnd || Math.random; return Math.min(qlen, 2 + Math.floor(rnd() * 3)); }
+function streakOf(days, t){
+  const set = new Set(days);
+  let d = set.has(t) ? t : addDays(t, -1);
+  let n = 0;
+  while(set.has(d)){ n++; d = addDays(d, -1); }
+  return n;
+}
+function boxCounts(store){
+  const b = [0, 0, 0, 0, 0, 0, 0];
+  for(const id in store.cards){ const r = store.cards[id]; b[Math.min(6, Math.max(0, r.box || 0))]++; }
+  return b;
+}
+function exportPayload(store, nowIso){
+  return {v:1, app:'kbkids', exported:nowIso, day:store.day, newToday:store.newToday, cfg:store.cfg,
+          cards:store.cards, stars:store.stars, days:store.days, review:store.review};
+}
+// Unione per carta: vince il record toccato più di recente. Rifiuta file che non sono di questa app.
+function mergeImport(store, inc, t){
+  if(!inc || typeof inc !== 'object' || inc.app !== 'kbkids' || !inc.cards) return null;
+  let add = 0, upd = 0, addRev = 0;
+  for(const id in inc.cards){
+    const rec = inc.cards[id], cur = store.cards[id];
+    if(!cur){ store.cards[id] = rec; add++; }
+    else if((rec.last || 0) > (cur.last || 0)){ store.cards[id] = rec; upd++; }
+  }
+  if(inc.day === t && typeof inc.newToday === 'number') store.newToday = Math.max(store.newToday, inc.newToday);
+  if(typeof inc.stars === 'number') store.stars = Math.max(store.stars, inc.stars);
+  if(Array.isArray(inc.days)) for(const d of inc.days) if(store.days.indexOf(d) < 0) store.days.push(d);
+  store.days.sort();
+  if(Array.isArray(inc.review)){
+    const key = r => [r.d, r.id, r.mine, r.note || ''].join('\u0001');
+    const seen = {};
+    for(const r of store.review) seen[key(r)] = 1;
+    for(const r of inc.review) if(!seen[key(r)]){ store.review.push(r); seen[key(r)] = 1; addRev++; }
+    store.review.sort((a, b) => String(a.d).localeCompare(String(b.d)));
+  }
+  return {add:add, upd:upd, addRev:addRev};
+}
+function reportText(store, t, build){
+  const c = counts(store, t), b = boxCounts(store), L = [];
+  L.push('REPORT ' + APP_NAME + ' · ' + t + ' · build ' + build);
+  L.push('Giorni giocati: ' + store.days.length + ' · serie: ' + streakOf(store.days, t) + ' · stelle: ' + store.stars +
+         ' · nuove al giorno: ' + store.cfg.newPerDay);
+  L.push('Carte viste: ' + c.seen + '/' + c.tot + ' · da ripassare oggi: ' + c.due + ' · box ' +
+         [1, 2, 3, 4, 5, 6].map(i => i + ':' + b[i]).join(' ') + (b[0] ? ' · in recupero: ' + b[0] : ''));
+  const hard = DATA.filter(x => store.cards[x.i] && store.cards[x.i].wrong > 0)
+                   .sort((x, y) => store.cards[y.i].wrong - store.cards[x.i].wrong).slice(0, 10)
+                   .map(x => x.t + ' (' + store.cards[x.i].wrong + ' err su ' + store.cards[x.i].seen + ')');
+  L.push('Più sbagliate: ' + (hard.length ? hard.join(' · ') : 'nessuna'));
+  const hinted = DATA.filter(x => store.cards[x.i] && store.cards[x.i].hint > 0)
+                     .sort((x, y) => store.cards[y.i].hint - store.cards[x.i].hint).slice(0, 10)
+                     .map(x => x.t + ' (' + store.cards[x.i].hint + ')');
+  L.push('Indizio usato: ' + (hinted.length ? hinted.join(' · ') : 'mai'));
+  L.push('Segnalazioni: ' + store.review.length);
+  store.review.forEach((r, i) => {
+    L.push((i + 1) + '. ' + r.d + ' · [' + r.cat + '] ' + r.term + ' · "' + r.prompt + '" · risposta: ' + r.mine +
+           ' · ' + (r.ok ? 'giusta' : 'sbagliata') + (r.hint ? ' (con indizio)' : '') + (r.note ? ' · nota: ' + r.note : ''));
+  });
+  return L.join('\n');
+}
+/*__ENGINE_END__*/
+
+/* ---------- stato dell'interfaccia ---------- */
+let store = normalizeStore(loadRaw(), today());
+let ses = null, view = 'home', cur = null, opts = [], picked = null, hintOn = false, dimmed = -1;
+let fbPhrase = '', lastStars = 0, memOK = true;
+const MASCOT = document.getElementById('mascotTpl').innerHTML;
+const GOOD = ['Well done!', 'Brilliant!', 'Spot on!', 'Nice one!', 'Awesome!', 'Great job!', 'Fantastic!', 'You rock!'];
+const GOOD_HINT = ['Good job!', 'That\'s it!', 'Nice!'];
+const RECOVER = ['That\'s it!', 'Got it!', 'There you go!'];
+const BAD = ['Never mind!', 'Almost!', 'Oops!', 'Not quite!', 'Next time!'];
+
+function loadRaw(){ try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){ return null; } }
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(store)); }
+  catch(e){ if(memOK){ memOK = false; toast('Memoria non disponibile: i progressi valgono solo per questa volta.'); } }
+}
+function toast(msg){
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function mdb(s){ return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+function pickFrom(a){ return a[Math.floor(Math.random() * a.length)]; }
+function mascot(state, small){ return '<div class="mascot ' + state + (small ? ' sm' : '') + '">' + MASCOT + '</div>'; }
+function rollDay(){ const t = today(); if(store.day !== t) store = normalizeStore(store, t); }
+
+/* ---------- effetti ---------- */
+const fx = (function(){
+  const cv = document.getElementById('fx'), ctx = cv.getContext && cv.getContext('2d');
+  if(!ctx) return {burst:function(){}};
+  let parts = [], raf = 0;
+  const COLORS = ['#2A9D8F', '#F4A261', '#E76F51', '#E9C46A', '#8AB17D', '#7FC8F8'];
+  function size(){
+    const r = window.devicePixelRatio || 1;
+    cv.width = Math.floor(innerWidth * r); cv.height = Math.floor(innerHeight * r);
+    ctx.setTransform(r, 0, 0, r, 0, 0);
+  }
+  addEventListener('resize', size); size();
+  function burst(n){
+    const cx = innerWidth / 2, cy = innerHeight * 0.33;
+    for(let i = 0; i < n; i++) parts.push({x:cx, y:cy, vx:(Math.random() - .5) * 16, vy:-Math.random() * 13 - 4, g:.38,
+      r:5 + Math.random() * 6, c:COLORS[i % COLORS.length], a:1, rot:Math.random() * 6, vr:(Math.random() - .5) * .35});
+    if(!raf) raf = requestAnimationFrame(tick);
+  }
+  function tick(){
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    parts = parts.filter(p => p.a > 0.03 && p.y < innerHeight + 30);
+    for(const p of parts){
+      p.vy += p.g; p.x += p.vx; p.y += p.vy; p.vx *= .98; p.a -= .011; p.rot += p.vr;
+      ctx.save(); ctx.globalAlpha = p.a; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * .6); ctx.restore();
+    }
+    if(parts.length) raf = requestAnimationFrame(tick);
+    else { ctx.clearRect(0, 0, innerWidth, innerHeight); raf = 0; }
+  }
+  return {burst:burst};
+})();
+
+const sfx = (function(){
+  let ac = null;
+  function ctx(){
+    if(!store.cfg.sound) return null;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if(ac.state === 'suspended') ac.resume();
+      return ac;
+    } catch(e){ return null; }
+  }
+  function tone(a, f, t0, dur, type, vol){
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  return {
+    ok(){ const a = ctx(); if(!a) return; const t = a.currentTime;
+          tone(a, 523, t, .18, 'sine', .22); tone(a, 659, t + .09, .18, 'sine', .22); tone(a, 784, t + .18, .3, 'sine', .22); },
+    no(){ const a = ctx(); if(!a) return; const t = a.currentTime;
+          tone(a, 220, t, .25, 'triangle', .16); tone(a, 175, t + .13, .32, 'triangle', .14); },
+    win(){ const a = ctx(); if(!a) return; const t = a.currentTime;
+           [523, 659, 784, 1047].forEach((f, i) => tone(a, f, t + i * .11, .32, 'sine', .2)); }
+  };
+})();
+
+/* ---------- sessione ---------- */
+function persistSession(){
+  if(ses && view === 'card'){ ses.cur = cur ? cur.i : null; ses.ts = Date.now(); store.session = ses; }
+  else store.session = null;
+  save();
+}
+function resumable(){
+  const s = store.session;
+  return !!(s && s.day === today() && (Date.now() - (s.ts || 0)) < 6 * 3600 * 1000 &&
+            ((s.cur && BY_ID[s.cur]) || (s.q && s.q.length)));
+}
+function resume(){
+  ses = store.session; view = 'card';
+  if(ses.cur && BY_ID[ses.cur]){ cur = BY_ID[ses.cur]; setupCard(); }
+  else nextCard();
+}
+function startToday(){
+  rollDay();
+  const t = today(), q = buildQueue(store, t);
+  if(!q.ids.length){ view = 'home'; render(); return; }
+  ses = newSession('today', q.ids, t, Date.now()); ses.dueLeft = q.dueLeft;
+  view = 'card'; nextCard();
+}
+function startFree(){
+  rollDay();
+  const ids = buildFreeQueue(store, FREE_N);
+  if(!ids.length){ toast('Prima gioca con le carte di oggi!'); return; }
+  ses = newSession('free', ids, today(), Date.now());
+  view = 'card'; nextCard();
+}
+function nextCard(){
+  let id = ses.q.shift();
+  while(id && !BY_ID[id]) id = ses.q.shift();
+  if(!id){ cur = null; finishSession(); return; }
+  cur = BY_ID[id]; setupCard();
+}
+function setupCard(){
+  picked = null; hintOn = false; dimmed = -1; fbPhrase = ''; lastStars = 0;
+  opts = makeOptions(cur);
+  persistSession(); render();
+  try { window.scrollTo(0, 0); } catch(e){}
+}
+function finishSession(){
+  view = 'done'; store.session = null; save();
+  const perfect = ses.total > 0 && ses.firstRight === ses.total;
+  fx.burst(perfect ? 170 : 90); sfx.win();
+  render();
+}
+function pick(idx){
+  if(picked || !cur || !opts[idx]) return;
+  const o = opts[idx]; picked = o;
+  const r = grade(store, ses, cur, o.ok, hintOn, today(), Date.now());
+  lastStars = r.stars;
+  if(!r.done) ses.q.splice(requeuePos(ses.q.length), 0, cur.i);
+  const cs = ses.cs[cur.i];
+  fbPhrase = o.ok ? (cs.wrong ? pickFrom(RECOVER) : hintOn ? pickFrom(GOOD_HINT) : pickFrom(GOOD)) : pickFrom(BAD);
+  persistSession();
+  if(o.ok){ fx.burst(hintOn ? 45 : 85); sfx.ok(); } else sfx.no();
+  render();
+}
+function useHint(){
+  if(picked || hintOn) return;
+  hintOn = true;
+  const wrong = opts.map((o, i) => o.ok ? -1 : i).filter(i => i >= 0);
+  dimmed = wrong[Math.floor(Math.random() * wrong.length)];
+  render();
+}
+function flagCard(){
+  if(!cur || !picked) return;
+  let note = '';
+  try { note = prompt('Vuoi scrivere perché la segnali? (puoi lasciare vuoto)', ''); } catch(e){ note = ''; }
+  if(note === null) return;
+  const sp = splitFront(cur.f);
+  store.review.push({d:today(), id:cur.i, cat:cur.c, term:cur.t, prompt:sp.pre + '___' + sp.post,
+                     mine:picked.text, ok:!!picked.ok, hint:hintOn, note:String(note).trim()});
+  save(); toast('Segnalata: finirà nel report per Claude.'); render();
+}
+function goHome(){ ses = null; cur = null; view = 'home'; rollDay(); render(); }
+
+/* ---------- rendering ---------- */
+function render(){
+  document.getElementById('stars').textContent = '⭐ ' + store.stars;
+  const st = document.getElementById('stage');
+  if(view === 'card' && cur) st.innerHTML = renderCard();
+  else if(view === 'done' && ses) st.innerHTML = renderDone();
+  else { view = 'home'; st.innerHTML = renderHome(); }
+}
+function renderHome(){
+  const t = today(), c = counts(store, t), streak = streakOf(store.days, t);
+  const fresh = Math.min(c.room, c.fresh);
+  let msg, btns = '';
+  if(resumable()){
+    const s = store.session;
+    msg = 'Hai una partita a metà: <b>' + s.done + '</b> su <b>' + s.total + '</b> carte fatte.';
+    btns = '<button class="btn" data-act="resume">Continua</button>';
+  } else if(c.due || fresh){
+    msg = 'Oggi: <b>' + c.due + '</b> da ripassare e <b>' + fresh + '</b> nuove.';
+    btns = '<button class="btn" data-act="start">Gioca</button>';
+    if(c.seen) btns += '<button class="btn ghost" data-act="free">Allenamento libero</button>';
+  } else if(c.fresh){
+    msg = 'Le carte nuove di oggi le hai già fatte. Le prossime arrivano domani.';
+    btns = '<button class="btn" data-act="free">Allenamento libero</button>';
+  } else {
+    msg = 'Tutto ripassato! Torna domani.';
+    btns = c.seen ? '<button class="btn" data-act="free">Allenamento libero</button>' : '';
+  }
+  return '<div class="card home">' + mascot('idle') +
+    '<h1>Ciao! Sono ' + esc("Lampo") + '</h1><p>' + msg + '</p>' +
+    '<div class="streak"><span>🔥 ' + streak + (streak === 1 ? ' giorno' : ' giorni') + ' di fila</span>' +
+    '<span>📚 ' + c.seen + '/' + c.tot + ' carte</span></div>' + btns + '</div>';
+}
+function renderCard(){
+  const sp = splitFront(cur.f);
+  const gap = picked ? '<span class="gap filled">' + esc(sp.ans) + '</span>' : '<span class="gap">&nbsp;</span>';
+  const pct = ses.total ? Math.round(100 * ses.done / ses.total) : 0;
+  const state = picked ? (picked.ok ? 'happy' : 'oops') : 'idle';
+  let h = '<div class="card">' +
+    '<div class="top">' + mascot(state, true) + '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+    '<div class="count">' + ses.done + '/' + ses.total + '</div></div>' +
+    '<div class="pill">' + esc(cur.c) + (ses.mode === 'free' ? ' · allenamento' : '') + '</div>' +
+    '<div class="sentence">' + esc(sp.pre) + gap + esc(sp.post) + '</div>' +
+    '<div class="trans">' + mdb(cur.tr) + '</div>';
+  h += opts.map((o, i) => {
+    let cls = 'opt', dis = false;
+    if(picked){ dis = true; if(o.ok) cls += ' ok'; else if(o === picked) cls += ' no'; }
+    else if(i === dimmed){ cls += ' dim'; dis = true; }
+    return '<button class="' + cls + '" data-act="pick" data-i="' + i + '"' + (dis ? ' disabled' : '') + '>' + esc(o.text) + '</button>';
+  }).join('');
+  if(hintOn && cur.h) h += '<div class="hinttxt">💡 ' + esc(cur.h) + '</div>';
+  if(picked){
+    h += '<div class="fb' + (picked.ok ? '' : ' bad') + '"><div class="big">' + esc(fbPhrase) + '</div>' +
+         '<div class="gloss"><b>' + esc(cur.t) + '</b> = ' + esc(cur.g) + '</div>' +
+         (lastStars ? '<div class="stars-won">+' + lastStars + ' ⭐</div>' : '') + '</div>' +
+         '<button class="btn" data-act="next">Avanti →</button>' +
+         '<button class="link" data-act="flag">Segnala a Claude</button>';
+  } else {
+    h += '<button class="btn soft" data-act="hint"' + (hintOn ? ' disabled' : '') + '>💡 Indizio</button>';
+  }
+  return h + '</div>';
+}
+function renderDone(){
+  const t = today(), c = counts(store, t), streak = streakOf(store.days, t);
+  const perfect = ses.total > 0 && ses.firstRight === ses.total;
+  let h = '<div class="card done">' + mascot('happy') +
+    '<h2>' + (perfect ? 'Perfetto!' : 'Finito!') + '</h2>' +
+    '<p class="statline">' + ses.total + (ses.total === 1 ? ' carta' : ' carte') + ' · <b>' + ses.firstRight + '</b> giuste al primo colpo · +' + ses.stars + ' ⭐</p>' +
+    '<p class="statline">🔥 ' + streak + (streak === 1 ? ' giorno' : ' giorni') + ' di fila</p>';
+  if(ses.mode === 'today' && c.due){
+    h += '<p class="small center">Ci sono ancora ' + c.due + ' carte da ripassare.</p>' +
+         '<button class="btn" data-act="start">Continua</button>';
+  }
+  h += '<div class="row"><button class="btn ghost" data-act="free">Ancora un giro</button>' +
+       '<button class="btn" data-act="home">Home</button></div></div>';
+  return h;
+}
+
+/* ---------- eventi ---------- */
+document.getElementById('stage').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if(!b) return;
+  const act = b.dataset.act;
+  if(act === 'pick') pick(parseInt(b.dataset.i, 10));
+  else if(act === 'hint') useHint();
+  else if(act === 'next') nextCard();
+  else if(act === 'flag') flagCard();
+  else if(act === 'start') startToday();
+  else if(act === 'free') startFree();
+  else if(act === 'resume') resume();
+  else if(act === 'home') goHome();
+});
+
+/* ---------- impostazioni ---------- */
+function renderPanel(){
+  document.getElementById('chips').innerHTML = [5, 6, 7, 8].map(n =>
+    '<button class="chip' + (store.cfg.newPerDay === n ? ' on' : '') + '" data-n="' + n + '">' + n + '</button>').join('');
+  document.querySelectorAll('#chips .chip').forEach(el => el.onclick = () => {
+    store.cfg.newPerDay = parseInt(el.dataset.n, 10); save(); renderPanel(); if(view === 'home') render();
+  });
+  document.getElementById('sound').checked = !!store.cfg.sound;
+  const n = store.review.length;
+  document.getElementById('revCount').textContent = n ? (n + (n === 1 ? ' carta segnalata' : ' carte segnalate') + '. Il report contiene anche progressi ed errori più frequenti.')
+                                                       : 'Nessuna carta segnalata. Il report contiene comunque progressi ed errori più frequenti.';
+  document.getElementById('btnRevClear').disabled = !n;
+}
+function openPanel(){ renderPanel(); document.getElementById('panel').hidden = false; }
+function closePanel(){ document.getElementById('panel').hidden = true; }
+document.getElementById('panelBtn').onclick = openPanel;
+document.getElementById('panelClose').onclick = closePanel;
+document.getElementById('panel').addEventListener('click', e => { if(e.target.id === 'panel') closePanel(); });
+document.getElementById('sound').onchange = e => { store.cfg.sound = !!e.target.checked; save(); };
+
+async function shareText(txt, okMsg){
+  if(navigator.share){
+    try { await navigator.share({text:txt}); return; }
+    catch(e){ if(e && e.name === 'AbortError') return; }
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    try { await navigator.clipboard.writeText(txt); toast(okMsg); return; } catch(e){}
+  }
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast(okMsg); } catch(e){ toast('Copia non riuscita: usa Esporta progressi.'); }
+  ta.remove();
+}
+document.getElementById('btnReport').onclick = () => shareText(reportText(store, today(), BUILD), 'Report copiato: incollalo nella chat con Claude.');
+document.getElementById('btnRevClear').onclick = () => {
+  if(!store.review.length) return;
+  if(!confirm('Svuotare le ' + store.review.length + ' segnalazioni? (Fallo dopo aver copiato il report.)')) return;
+  store.review = []; save(); renderPanel(); toast('Segnalazioni svuotate.');
+};
+async function exportProgress(){
+  const txt = JSON.stringify(exportPayload(store, new Date().toISOString()));
+  const name = 'english-kids-progressi-' + today() + '.json';
+  if(typeof File !== 'undefined' && navigator.canShare){
+    const file = new File([txt], name, {type:'application/json'});
+    if(navigator.canShare({files:[file]})){
+      try { await navigator.share({files:[file], title:name}); return; }
+      catch(e){ if(e && e.name === 'AbortError') return; }
+    }
+  }
+  const url = URL.createObjectURL(new Blob([txt], {type:'application/json'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Progressi esportati: ' + Object.keys(store.cards).length + ' carte.');
+}
+function importProgress(file){
+  const r = new FileReader();
+  r.onload = () => {
+    let inc = null;
+    try { inc = JSON.parse(r.result); } catch(e){}
+    const res = mergeImport(store, inc, today());
+    if(!res){ toast('File non valido: non è un salvataggio di ' + APP_NAME + '.'); return; }
+    save(); renderPanel(); goHome();
+    toast('Importate: ' + res.add + ' nuove, ' + res.upd + ' aggiornate' + (res.addRev ? ', ' + res.addRev + ' segnalazioni' : '') + '.');
+  };
+  r.readAsText(file);
+}
+document.getElementById('btnExport').onclick = exportProgress;
+document.getElementById('btnImport').onclick = () => document.getElementById('fileIn').click();
+document.getElementById('fileIn').onchange = e => { if(e.target.files[0]) importProgress(e.target.files[0]); e.target.value = ''; };
+document.getElementById('btnReset').onclick = () => {
+  if(!confirm('Ricominciare da capo? Si azzerano carte, stelle e giorni di fila. Le segnalazioni per Claude e le impostazioni restano.')) return;
+  const keep = {cfg:store.cfg, review:store.review};
+  store = emptyStore(today()); store.cfg = keep.cfg; store.review = keep.review;
+  save(); renderPanel(); goHome(); toast('Ricominciamo da zero!');
+};
+const BUILD = '20261003-1943.2cafe32';
+document.getElementById('btnUpd').onclick = async () => {
+  toast('Cerco aggiornamenti…');
+  try {
+    if('serviceWorker' in navigator){
+      const rs = await navigator.serviceWorker.getRegistrations();
+      for(const r of rs) await r.update();
+    }
+  } catch(e){}
+  location.replace(location.pathname + '?v=' + Date.now());
+};
+document.addEventListener('visibilitychange', () => { if(!document.hidden && view === 'home'){ rollDay(); render(); } });
+if(location.protocol === 'https:' && 'serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(reg => reg.update().catch(() => {})).catch(() => {});
+}
+render();
+</script>
+</body>
+</html>
