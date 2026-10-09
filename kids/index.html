@@ -61,7 +61,7 @@
   .fb .gloss{margin-top:4px; font-size:1rem}
   .fb .stars-won{font-size:.9rem; color:var(--muted); margin-top:2px}
   .hinttxt{margin-top:12px; padding:10px 12px; background:var(--hint); color:var(--hint-ink); border-radius:12px; font-size:.95rem; line-height:1.4}
-  .row{display:flex; gap:10px}
+  .row{display:flex; gap:10px; margin-top:4px}
   .row .btn{flex:1}
   .link{background:none; border:0; color:var(--muted); text-decoration:underline; font-size:.85rem; padding:10px 0 0; cursor:pointer; display:block; margin:0 auto}
   .mascot{width:150px; height:150px; margin:0 auto; display:block; flex:none}
@@ -126,9 +126,6 @@
     <div class="chips" id="chips"></div>
     <h3>Suoni</h3>
     <label class="sw"><span>Suoni quando rispondi</span><input type="checkbox" id="sound"></label>
-    <h3>Difficoltà</h3>
-    <label class="sw"><span>Traduzione sempre visibile (modalità facile)</span><input type="checkbox" id="easy"></label>
-    <div class="small">Spenta: dal box 3 la traduzione sparisce e la carta vale 3 stelle. Accesa: la traduzione c'è sempre e vale 2.</div>
     <h3>Segnala a Claude</h3>
     <div class="small" id="revCount"></div>
     <button class="btn ghost" id="btnReport">Copia il report per Claude</button>
@@ -138,7 +135,7 @@
     <button class="btn ghost" id="btnImport">Importa progressi</button>
     <input type="file" id="fileIn" accept="application/json,.json" hidden>
     <button class="btn ghost" id="btnReset" style="color:var(--no-ink)">Ricomincia da capo</button>
-    <div class="ver">versione 20261009-1104.27ef218 · <button id="btnUpd">cerca aggiornamenti</button></div>
+    <div class="ver">versione 20261009-1228.27ef218 · <button id="btnUpd">cerca aggiornamenti</button></div>
   </div>
 </div>
 
@@ -188,7 +185,6 @@ const KEY = 'kbkids.v1';
 const INTERVALS = [1, 2, 4, 7, 14, 30];      // giorni per box 1..6 (più corti del drill C1)
 const MAX_DUE = 30;                           // tetto di ripassi in una sessione
 const FREE_PAID = 2;                          // giri di allenamento libero al giorno che danno stelle
-const NO_TR_BOX = 3;                          // da questo box la traduzione è nascosta finché non risponde o chiede l'indizio
 const FREE_N = 10;                            // carte per un giro di allenamento libero
 const DEFAULT_NEW = 6;
 const APP_NAME = "English Kids";
@@ -208,13 +204,14 @@ function shuffle(a, rnd){
   return a;
 }
 function emptyStore(t){
-  return {v:1, app:'kbkids', cards:{}, cfg:{newPerDay:DEFAULT_NEW, sound:true, easy:false}, day:t, newToday:0,
+  return {v:1, app:'kbkids', cards:{}, cfg:{newPerDay:DEFAULT_NEW, sound:true}, day:t, newToday:0,
           stars:0, days:[], review:[], session:null, freeToday:0};
 }
 function normalizeStore(s, t){
   if(!s || typeof s !== 'object' || !s.cards || typeof s.cards !== 'object') s = emptyStore(t);
   s.v = 1; s.app = 'kbkids';
-  s.cfg = Object.assign({newPerDay:DEFAULT_NEW, sound:true, easy:false}, s.cfg || {});
+  s.cfg = Object.assign({newPerDay:DEFAULT_NEW, sound:true}, s.cfg || {});
+  delete s.cfg.easy;
   if(!Array.isArray(s.days)) s.days = [];
   if(!Array.isArray(s.review)) s.review = [];
   if(typeof s.stars !== 'number') s.stars = 0;
@@ -271,16 +268,16 @@ function newSession(mode, ids, t, now){
   return {mode:mode, day:t, q:ids.slice(), cur:null, cs:{}, total:ids.length, done:0, firstRight:0, stars:0, dueLeft:0, ts:now};
 }
 // Valuta una risposta: aggiorna store e sessione, ritorna {done, stars}.
-//   giusta senza indizio  → box +1, stelle 2
-//   giusta con indizio    → box fermo (almeno 1), stelle 1
-//   giusta dopo un errore → box 1, domani, stelle 1
-//   sbagliata             → box 0, domani, la carta torna tra poco nella stessa sessione
-//   allenamento libero    → non fa salire di box; un errore però riporta la carta a domani
-function grade(store, ses, card, right, usedHint, t, now){
+//   giusta solo con la frase inglese → box +1, stelle 3 (2 se la carta è nuova: la traduzione era già visibile)
+//   giusta con la traduzione        → box +1, stelle 2
+//   giusta con l'indizio            → box fermo (almeno 1), stelle 1
+//   giusta dopo un errore           → box 1, domani, stelle 1
+//   sbagliata                       → box 0, domani, la carta torna tra poco nella stessa sessione
+//   allenamento libero              → non fa salire di box; stelle solo nei primi FREE_PAID giri del giorno
+function grade(store, ses, card, right, usedHint, t, now, usedTr){
   const id = card.i;
   const isNew = !store.cards[id];
-  const noTr = !isNew && !store.cfg.easy && (store.cards[id].box || 0) >= NO_TR_BOX;
-  const rec = store.cards[id] || {box:0, due:t, seen:0, wrong:0, hint:0, last:0};
+  const rec = store.cards[id] || {box:0, due:t, seen:0, wrong:0, hint:0, tr:0, last:0};
   const cs = ses.cs[id] || (ses.cs[id] = {wrong:0, streak:0, counted:false});
   if(!cs.counted){
     cs.counted = true;
@@ -290,6 +287,7 @@ function grade(store, ses, card, right, usedHint, t, now){
   if(store.days.indexOf(t) < 0) store.days.push(t);
   rec.seen++; rec.last = now;
   if(usedHint) rec.hint++;
+  if(usedTr && !isNew) rec.tr = (rec.tr || 0) + 1;
   let done = false, stars = 0;
   if(right){
     cs.streak++;
@@ -297,7 +295,7 @@ function grade(store, ses, card, right, usedHint, t, now){
       done = true; stars = (cs.wrong || !ses.paid) ? 0 : 1;
     } else if(cs.wrong === 0){
       if(usedHint){ rec.box = Math.max(1, rec.box); stars = 1; }
-      else { rec.box = Math.min(INTERVALS.length, rec.box + 1); stars = noTr ? 3 : 2; }
+      else { rec.box = Math.min(INTERVALS.length, rec.box + 1); stars = (isNew || usedTr) ? 2 : 3; }
       rec.due = addDays(t, INTERVALS[rec.box - 1]); done = true;
     } else {
       rec.box = 1; rec.due = addDays(t, 1); stars = 1; done = true;
@@ -364,6 +362,10 @@ function reportText(store, t, build){
                      .sort((x, y) => store.cards[y.i].hint - store.cards[x.i].hint).slice(0, 10)
                      .map(x => x.t + ' (' + store.cards[x.i].hint + ')');
   L.push('Indizio usato: ' + (hinted.length ? hinted.join(' · ') : 'mai'));
+  const trd = DATA.filter(x => store.cards[x.i] && store.cards[x.i].tr > 0)
+                  .sort((x, y) => store.cards[y.i].tr - store.cards[x.i].tr).slice(0, 10)
+                  .map(x => x.t + ' (' + store.cards[x.i].tr + ')');
+  L.push('Traduzione chiesta: ' + (trd.length ? trd.join(' · ') : 'mai'));
   L.push('Segnalazioni: ' + store.review.length);
   store.review.forEach((r, i) => {
     L.push((i + 1) + '. ' + r.d + ' · [' + r.cat + '] ' + r.term + ' · "' + r.prompt + '" · risposta: ' + r.mine +
@@ -375,7 +377,7 @@ function reportText(store, t, build){
 
 /* ---------- stato dell'interfaccia ---------- */
 let store = normalizeStore(loadRaw(), today());
-let ses = null, view = 'home', cur = null, opts = [], picked = null, hintOn = false, dimmed = -1;
+let ses = null, view = 'home', cur = null, opts = [], picked = null, hintOn = false, trOn = false, dimmed = -1;
 let fbPhrase = '', lastStars = 0, memOK = true;
 const MASCOT = document.getElementById('mascotTpl').innerHTML;
 const GOOD = ['Well done!', 'Brilliant!', 'Spot on!', 'Nice one!', 'Awesome!', 'Great job!', 'Fantastic!', 'You rock!'];
@@ -498,7 +500,7 @@ function nextCard(){
   cur = BY_ID[id]; setupCard();
 }
 function setupCard(){
-  picked = null; hintOn = false; dimmed = -1; fbPhrase = ''; lastStars = 0;
+  picked = null; hintOn = false; trOn = false; dimmed = -1; fbPhrase = ''; lastStars = 0;
   opts = makeOptions(cur);
   persistSession(); render();
   try { window.scrollTo(0, 0); } catch(e){}
@@ -512,7 +514,7 @@ function finishSession(){
 function pick(idx){
   if(picked || !cur || !opts[idx]) return;
   const o = opts[idx]; picked = o;
-  const r = grade(store, ses, cur, o.ok, hintOn, today(), Date.now());
+  const r = grade(store, ses, cur, o.ok, hintOn, today(), Date.now(), trOn);
   lastStars = r.stars;
   if(!r.done) ses.q.splice(requeuePos(ses.q.length), 0, cur.i);
   const cs = ses.cs[cur.i];
@@ -521,10 +523,8 @@ function pick(idx){
   if(o.ok){ fx.burst(hintOn ? 45 : 85); sfx.ok(); } else sfx.no();
   render();
 }
-function showTr(){
-  const r = store.cards[cur.i];
-  return !!(picked || hintOn || store.cfg.easy || !r || (r.box || 0) < NO_TR_BOX);
-}
+function showTr(){ return !!(picked || hintOn || trOn || !store.cards[cur.i]); }
+function useTr(){ if(picked || trOn) return; trOn = true; render(); }
 function useHint(){
   if(picked || hintOn) return;
   hintOn = true;
@@ -592,7 +592,7 @@ function renderCard(){
     '<div class="count">' + ses.done + '/' + ses.total + '</div></div>' +
     '<div class="pill">' + esc(cur.c) + (ses.mode === 'free' ? (ses.paid ? ' · allenamento' : ' · allenamento senza stelle') : '') + '</div>' +
     '<div class="sentence">' + esc(sp.pre) + gap + esc(sp.post) + '</div>' +
-    (showTr() ? '<div class="trans">' + mdb(cur.tr) + '</div>' : '<div class="trans">🇮🇹 La traduzione appare con l\'indizio o dopo la risposta.</div>');
+    (showTr() ? '<div class="trans">' + mdb(cur.tr) + '</div>' : '');
   h += opts.map((o, i) => {
     let cls = 'opt', dis = false;
     if(picked){ dis = true; if(o.ok) cls += ' ok'; else if(o === picked) cls += ' no'; }
@@ -607,7 +607,9 @@ function renderCard(){
          '<button class="btn" data-act="next">Avanti →</button>' +
          '<button class="link" data-act="flag">Segnala a Claude</button>';
   } else {
-    h += '<button class="btn soft" data-act="hint"' + (hintOn ? ' disabled' : '') + '>💡 Indizio</button>';
+    h += '<div class="row">' +
+         (showTr() ? '' : '<button class="btn ghost" data-act="tr">🇮🇹 Traduzione</button>') +
+         '<button class="btn soft" data-act="hint"' + (hintOn ? ' disabled' : '') + '>💡 Indizio</button></div>';
   }
   return h + '</div>';
 }
@@ -634,6 +636,7 @@ document.getElementById('stage').addEventListener('click', e => {
   const act = b.dataset.act;
   if(act === 'pick') pick(parseInt(b.dataset.i, 10));
   else if(act === 'hint') useHint();
+  else if(act === 'tr') useTr();
   else if(act === 'next') nextCard();
   else if(act === 'flag') flagCard();
   else if(act === 'start') startToday();
@@ -650,7 +653,6 @@ function renderPanel(){
     store.cfg.newPerDay = parseInt(el.dataset.n, 10); save(); renderPanel(); if(view === 'home') render();
   });
   document.getElementById('sound').checked = !!store.cfg.sound;
-  document.getElementById('easy').checked = !!store.cfg.easy;
   const n = store.review.length;
   document.getElementById('revCount').textContent = n ? (n + (n === 1 ? ' carta segnalata' : ' carte segnalate') + '. Il report contiene anche progressi ed errori più frequenti.')
                                                        : 'Nessuna carta segnalata. Il report contiene comunque progressi ed errori più frequenti.';
@@ -662,7 +664,6 @@ document.getElementById('panelBtn').onclick = openPanel;
 document.getElementById('panelClose').onclick = closePanel;
 document.getElementById('panel').addEventListener('click', e => { if(e.target.id === 'panel') closePanel(); });
 document.getElementById('sound').onchange = e => { store.cfg.sound = !!e.target.checked; save(); };
-document.getElementById('easy').onchange = e => { store.cfg.easy = !!e.target.checked; save(); if(view === 'card') render(); };
 
 async function shareText(txt, okMsg){
   if(navigator.share){
@@ -721,7 +722,7 @@ document.getElementById('btnReset').onclick = () => {
   store = emptyStore(today()); store.cfg = keep.cfg; store.review = keep.review;
   save(); renderPanel(); goHome(); toast('Ricominciamo da zero!');
 };
-const BUILD = '20261009-1104.27ef218';
+const BUILD = '20261009-1228.27ef218';
 document.getElementById('btnUpd').onclick = async () => {
   toast('Cerco aggiornamenti…');
   try {
