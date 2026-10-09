@@ -1,4 +1,4 @@
-const CACHE = 'kbkids-20261006-2009.4bdc96f';
+const CACHE = 'kbkids-20261009-1104.27ef218';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
