@@ -26,6 +26,7 @@
   h1 span{color:var(--red)}
   .meta{font-size:.68rem; color:var(--slate)}
   .meta .golink{color:var(--red); text-decoration:none; font-weight:700}
+  .expband{background:#FBF2DF !important; color:#7A5410 !important; border-color:#F0D9B5 !important}
   .newbuild{margin:10px 0 0; padding:9px 12px; border:1px solid #BBD9C0; background:#EFF7F0;
             border-radius:8px; font-size:.78rem; color:#1E5B34; cursor:pointer; line-height:1.4}
   .newbuild b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -147,10 +148,11 @@
 <div class="wrap">
   <header>
     <h1>KB <span>Drill</span></h1>
-    <div class="meta">2026-10-11 · build 20261011-1151.1d95baa · 472 carte LEAN / 1167 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
+    <div class="meta">2026-10-11 · build 20261011-1205.1d95baa · 472 carte LEAN / 1167 FULL · fonte: KNOWLEDGE-BASE.md &middot; <a href="kb.html" class="golink">cerca nella KB</a></div>
   </header>
 
   <div class="newbuild" id="newbuild" hidden></div>
+  <div class="newbuild expband" id="expband" hidden></div>
 
   <div class="bar">
     <div class="seg" role="group" aria-label="Modalita">
@@ -177,10 +179,15 @@
     <h3>Da chiarire con Claude</h3>
     <div id="reviewBox"></div>
     <h3>Memoria</h3>
+    <div class="legend" style="margin-bottom:8px"><b>Attenzione:</b> su iPhone i progressi vivono dentro l'app installata. Se la togli dalla Home, o cancelli i dati di Safari, si perdono: esporta prima.</div>
     <div class="row">
       <button class="iconbtn" id="btnExport">Esporta progressi</button>
       <button class="iconbtn" id="btnImport">Importa progressi</button>
     </div>
+    <div class="legend" id="expInfo" style="margin-top:6px"></div>
+    <h3>Ripartenza rapida</h3>
+    <div class="chips" id="restartChips"></div>
+    <div class="legend" style="margin-top:6px">Da attivare dopo una perdita dei dati: le carte che sai saltano subito a 7 giorni, cos\u00ec in pochi giri il mazzo torna a riflettere quello che conosci. Si spegne da sola quando tutte le carte sono state viste una volta.</div>
     <div class="row" style="margin-top:8px">
       <button class="iconbtn" id="btnUpd">Cerca aggiornamenti</button>
       <button class="iconbtn" id="btnReset">Azzera memoria</button>
@@ -1459,6 +1466,8 @@ function grade(right){
     cs.streak++;
     if(cs.wrong === 0 || cs.streak >= 2){
       rec.box = cs.wrong ? 1 : Math.min(INTERVALS.length, rec.box + 1);
+      // ripartenza rapida dopo una perdita dei dati: cio' che sai salta subito a 7 giorni
+      if(store.cfg.restart && !cs.wrong && rec.box < 3) rec.box = 3;
       rec.due = addDays(t, INTERVALS[rec.box - 1]);
       done = true;
     }
@@ -1475,6 +1484,38 @@ function grade(right){
 /* ---------- chrome: contatori, chip, progressi ---------- */
 function renderChrome(){
   const c = counts();
+  const nCards = Object.keys(store.cards).length;
+  const le = store.cfg.lastExport;
+  const giorni = le ? Math.floor((new Date(today()) - new Date(le)) / 86400000) : null;
+  const ei = document.getElementById('expInfo');
+  if(ei) ei.textContent = le ? ('Ultimo export: ' + le + (giorni > 7 ? ' \u2014 sono passati ' + giorni + ' giorni, conviene rifarlo' : ''))
+                             : (nCards ? 'Nessun export finora.' : '');
+  // promemoria in cima: piu' di 7 giorni senza export (o mai) con progressi da proteggere
+  const rb = document.getElementById('expband');
+  if(rb){
+    const show = nCards >= 20 && (!le || giorni > 7) && store.cfg.expSnooze !== today();
+    rb.hidden = !show;
+    if(show){
+      rb.innerHTML = '\u26a0 ' + (le ? 'Non esporti i progressi da ' + giorni + ' giorni' : 'Non hai mai esportato i progressi') +
+                     ' \u2014 <b>esporta ora</b> <span>(tocca qui; a destra per oggi no)</span>';
+      rb.onclick = (ev) => {
+        if(ev.offsetX > rb.clientWidth * 0.7){ store.cfg.expSnooze = today(); save(); rb.hidden = true; }
+        else exportProgress();
+      };
+    }
+  }
+  // ripartenza rapida: si spegne da sola quando ogni carta della selezione e' stata vista
+  if(store.cfg.restart){
+    const pool = DATA.filter(x => set === 'full' || x.l);
+    if(pool.every(x => store.cards[x.i])){ store.cfg.restart = false; save(); toast('Ripartenza rapida completata: tutte le carte sono state viste.'); }
+  }
+  const rc = document.getElementById('restartChips');
+  if(rc){
+    rc.innerHTML = '<button class="chip' + (store.cfg.restart ? ' on' : '') + '" id="rsOn">Attiva</button>' +
+                   '<button class="chip' + (!store.cfg.restart ? ' on' : '') + '" id="rsOff">Spenta</button>';
+    document.getElementById('rsOn').onclick = () => { store.cfg.restart = true; save(); renderChrome(); };
+    document.getElementById('rsOff').onclick = () => { store.cfg.restart = false; save(); renderChrome(); };
+  }
   document.getElementById('todayLine').innerHTML = (mode === 'today')
     ? 'Oggi: <b>' + c.due + '</b> da ripassare \u00b7 <b>' + Math.min(c.room, c.fresh) + '</b> nuove \u00b7 ' + c.tot + ' carte in questa selezione'
     : 'Giro libero su <b>' + c.tot + '</b> carte \u00b7 i progressi vengono comunque salvati';
@@ -1540,6 +1581,7 @@ function exportProgress(){
   a.href = url; a.download = 'kb-drill-progressi-' + today() + '.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  store.cfg.lastExport = today(); save(); renderChrome();
   toast('Progressi esportati: ' + Object.keys(store.cards).length + ' carte.');
 }
 function importProgress(file){
@@ -1610,7 +1652,7 @@ document.addEventListener('keydown', e => {
   else if(!flipped && e.key === '3' && current && current.h){ showHint = true; render(); }
 });
 
-const BUILD = '20261011-1151.1d95baa';
+const BUILD = '20261011-1205.1d95baa';
 // il confronto della build sta fuori dal service worker: cosi' l'avviso compare comunque
 (function(){
   const prev = store.cfg.lastBuild;
