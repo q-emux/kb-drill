@@ -1,4 +1,4 @@
-const CACHE = 'kb-drill-20261027-0410.84c0a05';
+const CACHE = 'kb-drill-20261029-1050.79781c9';
 const ASSETS = ['./', './index.html', './kb.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
